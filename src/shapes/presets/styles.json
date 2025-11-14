@@ -1,0 +1,98 @@
+{
+  "default": {
+    "name": "Default Style",
+    "description": "Standard white fill with blue stroke",
+    "fill": "#ffffff",
+    "stroke": "#1976d2",
+    "strokeWidth": 2,
+    "opacity": 1
+  },
+  "blue": {
+    "name": "Blue",
+    "description": "Light blue fill with dark blue stroke",
+    "fill": "#e3f2fd",
+    "stroke": "#1976d2",
+    "strokeWidth": 2,
+    "opacity": 1
+  },
+  "green": {
+    "name": "Green",
+    "description": "Light green fill with dark green stroke",
+    "fill": "#e8f5e9",
+    "stroke": "#388e3c",
+    "strokeWidth": 2,
+    "opacity": 1
+  },
+  "red": {
+    "name": "Red",
+    "description": "Light red fill with dark red stroke",
+    "fill": "#ffebee",
+    "stroke": "#d32f2f",
+    "strokeWidth": 2,
+    "opacity": 1
+  },
+  "yellow": {
+    "name": "Yellow",
+    "description": "Light yellow fill with dark yellow stroke",
+    "fill": "#fffde7",
+    "stroke": "#f57f17",
+    "strokeWidth": 2,
+    "opacity": 1
+  },
+  "orange": {
+    "name": "Orange",
+    "description": "Light orange fill with dark orange stroke",
+    "fill": "#fff3e0",
+    "stroke": "#e65100",
+    "strokeWidth": 2,
+    "opacity": 1
+  },
+  "purple": {
+    "name": "Purple",
+    "description": "Light purple fill with dark purple stroke",
+    "fill": "#f3e5f5",
+    "stroke": "#7b1fa2",
+    "strokeWidth": 2,
+    "opacity": 1
+  },
+  "gray": {
+    "name": "Gray",
+    "description": "Light gray fill with dark gray stroke",
+    "fill": "#f5f5f5",
+    "stroke": "#616161",
+    "strokeWidth": 2,
+    "opacity": 1
+  },
+  "transparent": {
+    "name": "Transparent",
+    "description": "No fill, black stroke",
+    "fill": "transparent",
+    "stroke": "#000000",
+    "strokeWidth": 2,
+    "opacity": 1
+  },
+  "bold": {
+    "name": "Bold",
+    "description": "White fill with thick black stroke",
+    "fill": "#ffffff",
+    "stroke": "#000000",
+    "strokeWidth": 4,
+    "opacity": 1
+  },
+  "subtle": {
+    "name": "Subtle",
+    "description": "White fill with thin gray stroke",
+    "fill": "#ffffff",
+    "stroke": "#cccccc",
+    "strokeWidth": 1,
+    "opacity": 1
+  },
+  "gradient-blue": {
+    "name": "Gradient Blue",
+    "description": "Blue gradient fill",
+    "fill": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    "stroke": "#667eea",
+    "strokeWidth": 2,
+    "opacity": 1
+  }
+}

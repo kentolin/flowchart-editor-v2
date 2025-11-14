@@ -1,0 +1,75 @@
+{
+  "id": "network-server",
+  "name": "Server",
+  "category": "network",
+  "description": "Represents a server in network diagrams",
+  "icon": "preview.svg",
+  "tags": ["network", "server", "hardware", "infrastructure"],
+  
+  "defaultSize": {
+    "width": 100,
+    "height": 120
+  },
+  
+  "defaultStyle": {
+    "fill": "#eceff1",
+    "stroke": "#455a64",
+    "strokeWidth": 2,
+    "opacity": 1,
+    "textColor": "#000000",
+    "fontSize": 12,
+    "fontFamily": "Arial, sans-serif",
+    "textAlign": "center"
+  },
+  
+  "properties": {
+    "units": {
+      "type": "integer",
+      "default": 3,
+      "min": 1,
+      "max": 6,
+      "label": "Server Units"
+    }
+  },
+  
+  "ports": {
+    "enabled": true,
+    "preset": "standard-4",
+    "positions": [
+      { "id": "top", "x": 0.5, "y": 0, "type": "input" },
+      { "id": "right", "x": 1, "y": 0.5, "type": "output" },
+      { "id": "bottom", "x": 0.5, "y": 1, "type": "output" },
+      { "id": "left", "x": 0, "y": 0.5, "type": "input" }
+    ]
+  },
+  
+  "handles": {
+    "enabled": true,
+    "preset": "all-corners-sides",
+    "positions": ["nw", "n", "ne", "e", "se", "s", "sw", "w"]
+  },
+  
+  "constraints": {
+    "minWidth": 60,
+    "minHeight": 80,
+    "maxWidth": 200,
+    "maxHeight": 400,
+    "aspectRatio": null
+  },
+  
+  "features": {
+    "resizable": true,
+    "rotatable": false,
+    "connectable": true,
+    "groupable": true,
+    "lockable": true,
+    "clonable": true
+  },
+  
+  "metadata": {
+    "version": "1.0.0",
+    "author": "System",
+    "created": "2025-01-01",
+    "updated": "2025-01-01"
+  }
+}

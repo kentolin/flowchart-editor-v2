@@ -1,0 +1,64 @@
+{
+  "id": "flowchart-terminator",
+  "name": "Terminator (Start/End)",
+  "category": "flowchart",
+  "description": "Represents the start or end of a flowchart process",
+  "icon": "preview.svg",
+  "tags": ["flowchart", "terminator", "start", "end", "begin"],
+  
+  "defaultSize": {
+    "width": 140,
+    "height": 60
+  },
+  
+  "defaultStyle": {
+    "fill": "#e8f5e9",
+    "stroke": "#388e3c",
+    "strokeWidth": 2,
+    "opacity": 1,
+    "textColor": "#000000",
+    "fontSize": 14,
+    "fontFamily": "Arial, sans-serif",
+    "textAlign": "center",
+    "fontWeight": "bold"
+  },
+  
+  "ports": {
+    "enabled": true,
+    "preset": "horizontal-2",
+    "positions": [
+      { "id": "left", "x": 0, "y": 0.5, "type": "input" },
+      { "id": "right", "x": 1, "y": 0.5, "type": "output" }
+    ]
+  },
+  
+  "handles": {
+    "enabled": true,
+    "preset": "horizontal-sides",
+    "positions": ["e", "w"]
+  },
+  
+  "constraints": {
+    "minWidth": 80,
+    "minHeight": 40,
+    "maxWidth": 300,
+    "maxHeight": 100,
+    "aspectRatio": null
+  },
+  
+  "features": {
+    "resizable": true,
+    "rotatable": false,
+    "connectable": true,
+    "groupable": true,
+    "lockable": true,
+    "clonable": true
+  },
+  
+  "metadata": {
+    "version": "1.0.0",
+    "author": "System",
+    "created": "2025-01-01",
+    "updated": "2025-01-01"
+  }
+}

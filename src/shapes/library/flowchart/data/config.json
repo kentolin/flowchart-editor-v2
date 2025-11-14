@@ -1,0 +1,76 @@
+{
+  "id": "flowchart-data",
+  "name": "Data (Input/Output)",
+  "category": "flowchart",
+  "description": "Represents data input or output operations",
+  "icon": "preview.svg",
+  "tags": ["flowchart", "data", "input", "output", "io", "parallelogram"],
+  
+  "defaultSize": {
+    "width": 140,
+    "height": 80
+  },
+  
+  "defaultStyle": {
+    "fill": "#f3e5f5",
+    "stroke": "#7b1fa2",
+    "strokeWidth": 2,
+    "opacity": 1,
+    "textColor": "#000000",
+    "fontSize": 14,
+    "fontFamily": "Arial, sans-serif",
+    "textAlign": "center"
+  },
+  
+  "properties": {
+    "skew": {
+      "type": "number",
+      "default": 0.2,
+      "min": 0.1,
+      "max": 0.4,
+      "step": 0.05,
+      "label": "Skew Amount"
+    }
+  },
+  
+  "ports": {
+    "enabled": true,
+    "preset": "standard-4",
+    "positions": [
+      { "id": "top", "x": 0.5, "y": 0, "type": "input" },
+      { "id": "right", "x": 0.9, "y": 0.5, "type": "output" },
+      { "id": "bottom", "x": 0.5, "y": 1, "type": "output" },
+      { "id": "left", "x": 0.1, "y": 0.5, "type": "input" }
+    ]
+  },
+  
+  "handles": {
+    "enabled": true,
+    "preset": "all-corners-sides",
+    "positions": ["nw", "n", "ne", "e", "se", "s", "sw", "w"]
+  },
+  
+  "constraints": {
+    "minWidth": 80,
+    "minHeight": 50,
+    "maxWidth": 400,
+    "maxHeight": 200,
+    "aspectRatio": null
+  },
+  
+  "features": {
+    "resizable": true,
+    "rotatable": false,
+    "connectable": true,
+    "groupable": true,
+    "lockable": true,
+    "clonable": true
+  },
+  
+  "metadata": {
+    "version": "1.0.0",
+    "author": "System",
+    "created": "2025-01-01",
+    "updated": "2025-01-01"
+  }
+}

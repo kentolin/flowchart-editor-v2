@@ -1,0 +1,52 @@
+{
+  "standard-4": {
+    "name": "Standard 4 Ports",
+    "description": "Top, right, bottom, left ports",
+    "ports": [
+      { "id": "top", "x": 0.5, "y": 0, "type": "input", "direction": "top" },
+      { "id": "right", "x": 1, "y": 0.5, "type": "output", "direction": "right" },
+      { "id": "bottom", "x": 0.5, "y": 1, "type": "output", "direction": "bottom" },
+      { "id": "left", "x": 0, "y": 0.5, "type": "input", "direction": "left" }
+    ]
+  },
+  "standard-8": {
+    "name": "Standard 8 Ports",
+    "description": "Ports at all corners and sides",
+    "ports": [
+      { "id": "top", "x": 0.5, "y": 0, "type": "both", "direction": "top" },
+      { "id": "top-right", "x": 0.75, "y": 0, "type": "both", "direction": "top" },
+      { "id": "right", "x": 1, "y": 0.5, "type": "both", "direction": "right" },
+      { "id": "bottom-right", "x": 0.75, "y": 1, "type": "both", "direction": "bottom" },
+      { "id": "bottom", "x": 0.5, "y": 1, "type": "both", "direction": "bottom" },
+      { "id": "bottom-left", "x": 0.25, "y": 1, "type": "both", "direction": "bottom" },
+      { "id": "left", "x": 0, "y": 0.5, "type": "both", "direction": "left" },
+      { "id": "top-left", "x": 0.25, "y": 0, "type": "both", "direction": "top" }
+    ]
+  },
+  "corners-only": {
+    "name": "Corner Ports Only",
+    "description": "Ports at four corners",
+    "ports": [
+      { "id": "top-left", "x": 0, "y": 0, "type": "both", "direction": "top-left" },
+      { "id": "top-right", "x": 1, "y": 0, "type": "both", "direction": "top-right" },
+      { "id": "bottom-right", "x": 1, "y": 1, "type": "both", "direction": "bottom-right" },
+      { "id": "bottom-left", "x": 0, "y": 1, "type": "both", "direction": "bottom-left" }
+    ]
+  },
+  "flowchart": {
+    "name": "Flowchart Ports",
+    "description": "Top input, bottom output",
+    "ports": [
+      { "id": "top", "x": 0.5, "y": 0, "type": "input", "direction": "top" },
+      { "id": "bottom", "x": 0.5, "y": 1, "type": "output", "direction": "bottom" }
+    ]
+  },
+  "horizontal-flow": {
+    "name": "Horizontal Flow",
+    "description": "Left input, right output",
+    "ports": [
+      { "id": "left", "x": 0, "y": 0.5, "type": "input", "direction": "left" },
+      { "id": "right", "x": 1, "y": 0.5, "type": "output", "direction": "right" }
+    ]
+  }
+}

@@ -8,3 +8,4 @@
  */
 
 export { ServiceContainer } from "./ServiceContainer.js";
+export { ServiceProvider } from "./ServiceProvider.js";

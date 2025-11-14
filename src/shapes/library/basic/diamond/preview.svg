@@ -1,0 +1,12 @@
+<svg width="120" height="120" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <path d="M 60 10 L 110 60 L 60 110 L 10 60 Z" 
+        fill="#e3f2fd" 
+        stroke="#1976d2" 
+        stroke-width="2"/>
+  <text x="60" y="65" 
+        font-family="Arial, sans-serif" 
+        font-size="14" 
+        fill="#333333" 
+        text-anchor="middle" 
+        dominant-baseline="middle">Diamond</text>
+</svg>

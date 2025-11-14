@@ -1,0 +1,62 @@
+{
+  "id": "diamond",
+  "name": "Diamond",
+  "type": "diamond",
+  "category": "basic",
+  "description": "Diamond/rhombus shape, commonly used for decision points",
+  "icon": "preview.svg",
+  "tags": ["basic", "geometric", "diamond", "rhombus", "decision"],
+  
+  "defaultSize": {
+    "width": 120,
+    "height": 100
+  },
+  
+  "defaultStyle": {
+    "fill": "#ffffff",
+    "stroke": "#1976d2",
+    "strokeWidth": 2,
+    "opacity": 1
+  },
+  
+  "ports": {
+    "enabled": true,
+    "preset": "standard-4",
+    "positions": [
+      { "id": "top", "x": 0.5, "y": 0, "type": "input", "direction": "top" },
+      { "id": "right", "x": 1, "y": 0.5, "type": "output", "direction": "right" },
+      { "id": "bottom", "x": 0.5, "y": 1, "type": "output", "direction": "bottom" },
+      { "id": "left", "x": 0, "y": 0.5, "type": "input", "direction": "left" }
+    ]
+  },
+  
+  "handles": {
+    "enabled": true,
+    "preset": "all-corners-sides",
+    "positions": ["nw", "n", "ne", "e", "se", "s", "sw", "w"]
+  },
+  
+  "constraints": {
+    "minWidth": 60,
+    "minHeight": 50,
+    "maxWidth": 1000,
+    "maxHeight": 1000,
+    "aspectRatio": null
+  },
+  
+  "features": {
+    "resizable": true,
+    "rotatable": true,
+    "connectable": true,
+    "groupable": true,
+    "lockable": true,
+    "clonable": true
+  },
+  
+  "metadata": {
+    "version": "1.0.0",
+    "author": "System",
+    "created": "2025-01-01",
+    "updated": "2025-01-01"
+  }
+}

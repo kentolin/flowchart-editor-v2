@@ -1,0 +1,72 @@
+{
+  "id": "rect",
+  "name": "Rectangle",
+  "type": "rect",
+  "category": "basic",
+  "description": "Basic rectangle shape with optional rounded corners",
+  "icon": "preview.svg",
+  "tags": ["basic", "geometric", "rectangle", "box"],
+  
+  "defaultSize": {
+    "width": 120,
+    "height": 80
+  },
+  
+  "defaultStyle": {
+    "fill": "#ffffff",
+    "stroke": "#1976d2",
+    "strokeWidth": 2,
+    "opacity": 1
+  },
+  
+  "ports": {
+    "enabled": true,
+    "preset": "standard-4",
+    "positions": [
+      { "id": "top", "x": 0.5, "y": 0, "type": "input", "direction": "top" },
+      { "id": "right", "x": 1, "y": 0.5, "type": "output", "direction": "right" },
+      { "id": "bottom", "x": 0.5, "y": 1, "type": "output", "direction": "bottom" },
+      { "id": "left", "x": 0, "y": 0.5, "type": "input", "direction": "left" }
+    ]
+  },
+  
+  "handles": {
+    "enabled": true,
+    "preset": "all-corners-sides",
+    "positions": ["nw", "n", "ne", "e", "se", "s", "sw", "w"]
+  },
+  
+  "constraints": {
+    "minWidth": 40,
+    "minHeight": 40,
+    "maxWidth": 1000,
+    "maxHeight": 1000,
+    "aspectRatio": null
+  },
+  
+  "features": {
+    "resizable": true,
+    "rotatable": true,
+    "connectable": true,
+    "groupable": true,
+    "lockable": true,
+    "clonable": true
+  },
+  
+  "customProperties": {
+    "cornerRadius": {
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 50,
+      "description": "Corner radius for rounded rectangles"
+    }
+  },
+  
+  "metadata": {
+    "version": "1.0.0",
+    "author": "System",
+    "created": "2025-01-01",
+    "updated": "2025-01-01"
+  }
+}

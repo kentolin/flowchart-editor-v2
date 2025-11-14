@@ -1,0 +1,65 @@
+{
+  "id": "flowchart-decision",
+  "name": "Decision",
+  "category": "flowchart",
+  "description": "Represents a decision point or conditional branch (Yes/No, True/False)",
+  "icon": "preview.svg",
+  "tags": ["flowchart", "decision", "conditional", "branch", "diamond"],
+  
+  "defaultSize": {
+    "width": 120,
+    "height": 120
+  },
+  
+  "defaultStyle": {
+    "fill": "#fff3e0",
+    "stroke": "#f57c00",
+    "strokeWidth": 2,
+    "opacity": 1,
+    "textColor": "#000000",
+    "fontSize": 14,
+    "fontFamily": "Arial, sans-serif",
+    "textAlign": "center"
+  },
+  
+  "ports": {
+    "enabled": true,
+    "preset": "diamond-4",
+    "positions": [
+      { "id": "top", "x": 0.5, "y": 0, "type": "input", "label": "" },
+      { "id": "right", "x": 1, "y": 0.5, "type": "output", "label": "Yes" },
+      { "id": "bottom", "x": 0.5, "y": 1, "type": "output", "label": "No" },
+      { "id": "left", "x": 0, "y": 0.5, "type": "input", "label": "" }
+    ]
+  },
+  
+  "handles": {
+    "enabled": true,
+    "preset": "corners-only",
+    "positions": ["nw", "ne", "se", "sw"]
+  },
+  
+  "constraints": {
+    "minWidth": 60,
+    "minHeight": 60,
+    "maxWidth": 300,
+    "maxHeight": 300,
+    "aspectRatio": 1.0
+  },
+  
+  "features": {
+    "resizable": true,
+    "rotatable": false,
+    "connectable": true,
+    "groupable": true,
+    "lockable": true,
+    "clonable": true
+  },
+  
+  "metadata": {
+    "version": "1.0.0",
+    "author": "System",
+    "created": "2025-01-01",
+    "updated": "2025-01-01"
+  }
+}

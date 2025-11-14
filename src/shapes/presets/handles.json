@@ -1,0 +1,32 @@
+{
+  "all-corners-sides": {
+    "name": "All Corners and Sides",
+    "description": "8 resize handles at all corners and sides",
+    "handles": ["nw", "n", "ne", "e", "se", "s", "sw", "w"]
+  },
+  "corners-only": {
+    "name": "Corners Only",
+    "description": "4 resize handles at corners",
+    "handles": ["nw", "ne", "se", "sw"]
+  },
+  "sides-only": {
+    "name": "Sides Only",
+    "description": "4 resize handles at sides",
+    "handles": ["n", "e", "s", "w"]
+  },
+  "horizontal-only": {
+    "name": "Horizontal Only",
+    "description": "Resize left and right only",
+    "handles": ["e", "w"]
+  },
+  "vertical-only": {
+    "name": "Vertical Only",
+    "description": "Resize top and bottom only",
+    "handles": ["n", "s"]
+  },
+  "proportional": {
+    "name": "Proportional Resize",
+    "description": "Corner handles for proportional resizing",
+    "handles": ["nw", "ne", "se", "sw"]
+  }
+}
