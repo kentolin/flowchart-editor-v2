@@ -1,0 +1,33 @@
+{
+  "id": "polygon",
+  "name": "Polygon",
+  "category": "basic",
+  "description": "Regular polygon with configurable sides",
+  "defaults": {
+    "width": 100,
+    "height": 100,
+    "sides": 6,
+    "rotation": 0
+  },
+  "properties": {
+    "sides": {
+      "type": "number",
+      "label": "Sides",
+      "min": 3,
+      "max": 12,
+      "default": 6
+    },
+    "rotation": {
+      "type": "number",
+      "label": "Rotation",
+      "min": 0,
+      "max": 360,
+      "default": 0
+    }
+  },
+  "style": {
+    "fill": "#ffffff",
+    "stroke": "#000000",
+    "strokeWidth": 2
+  }
+}
