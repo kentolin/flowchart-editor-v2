@@ -1,534 +1,1094 @@
 /**
- * main.js - Application Entry Point & Initialization
+ * main.js - Application entry point
  *
- * Main entry point for the flowchart editor application.
- * Handles application bootstrap, dependency injection, and initialization.
- *
- * DEPENDENCIES: ServiceContainer, ServiceProvider, all core modules
- *
- * @module src/app
- * @version 1.0.0
- *
- * Purpose:
- * - Initialize the service container
- * - Use ServiceProvider to register all services
- * - Create manager instances
- * - Initialize controllers
- * - Mount the editor to DOM
- * - Set up event listeners
- * - Handle application errors
- * - Provide application lifecycle hooks
- *
- * @example
- * import { createApp } from './app.js';
- *
- * // Create and initialize app
- * const app = createApp();
- *
- * // Mount to DOM element
- * app.mount('#editor');
- *
- * // Access services
- * const nodeManager = app.getService('nodeManager');
+ * This is the main initialization file that:
+ * - Bootstraps the entire application
+ * - Initializes all managers and services
+ * - Sets up the editor and UI
+ * - Handles global application lifecycle
  */
 
-import { ServiceContainer } from "../core/container/ServiceContainer.js";
+import { Editor } from "../core/Editor.js";
 import { ServiceProvider } from "../core/container/ServiceProvider.js";
-import { ShapeLoader } from "../shapes/loader/ShapeLoader.js";
+import { EventBus } from "../core/events/EventBus.js";
+import { StateManager } from "../core/state/StateManager.js";
+import { NodeManager } from "../core/managers/NodeManager.js";
+import { EdgeManager } from "../core/managers/EdgeManager.js";
+import { SelectionManager } from "../core/managers/SelectionManager.js";
+import { HistoryManager } from "../core/managers/HistoryManager.js";
+import { ClipboardManager } from "../core/managers/ClipboardManager.js";
+import { ValidationManager } from "../core/managers/ValidationManager.js";
+import { ExportManager } from "../core/managers/ExportManager.js";
+import { ThemeManager } from "../core/managers/ThemeManager.js";
+import { LayerManager } from "../core/managers/LayerManager.js";
+//import { GridManager } from "../core/managers/GridManager.js";
+//import { ToolManager } from "../core/managers/ToolManager.js";
+import { ShapeRegistry } from "../shapes/registry/ShapeRegistry.js";
+import { getAllShapeClasses } from "../shapes/index.js";
 
 /**
- * Application Class
- *
- * Main application instance managing all components.
+ * FlowchartApp - Main application class
  */
-class Application {
-  /**
-   * Initialize the application
-   *
-   * @param {Object} [options] - Application options
-   * @param {string} [options.theme] - Theme name (light, dark)
-   * @param {boolean} [options.debug] - Enable debug mode
-   * @param {Object} [options.config] - Configuration object
-   *
-   * @example
-   * const app = new Application({
-   *   theme: 'light',
-   *   debug: true
-   * });
-   */
-  constructor(options = {}) {
+class FlowchartApp {
+  constructor(containerSelector, options = {}) {
+    this.container = document.querySelector(containerSelector);
+
+    if (!this.container) {
+      throw new Error(`Container element "${containerSelector}" not found`);
+    }
+
     this.options = {
-      theme: "light",
-      debug: false,
+      // Editor options
+      width: options.width || 1920,
+      height: options.height || 1080,
+      minZoom: options.minZoom || 0.1,
+      maxZoom: options.maxZoom || 5,
+
+      // Grid options
+      gridEnabled: options.gridEnabled !== false,
+      gridSize: options.gridSize || 20,
+      snapToGrid: options.snapToGrid || false,
+
+      // History options
+      maxHistorySize: options.maxHistorySize || 100,
+
+      // Theme
+      theme: options.theme || "light",
+
+      // Features
+      features: {
+        undo: options.features?.undo !== false,
+        clipboard: options.features?.clipboard !== false,
+        validation: options.features?.validation !== false,
+        export: options.features?.export !== false,
+        ...options.features,
+      },
+
       ...options,
     };
 
-    // Application state
-    this.isInitialized = false;
-    this.isMounted = false;
-    this.isDestroyed = false;
-
-    // Event listeners
-    this.eventListeners = new Map();
-
-    // Initialize container with ServiceProvider
-    this._initializeContainer();
-
-    // Print startup info if debug enabled
-    if (this.options.debug) {
-      console.log(
-        "%cApplication initialized in DEBUG mode",
-        "color: #0066cc; font-weight: bold"
-      );
-      this._printInfo();
-    }
+    this.editor = null;
+    this.serviceProvider = null;
+    this.managers = {};
+    this.initialized = false;
   }
 
   /**
-   * Initialize service container and register services using ServiceProvider
-   *
-   * @private
+   * Initialize the application
    */
-  _initializeContainer() {
-    // Create service container
-    this.container = new ServiceContainer();
-
-    // Use ServiceProvider to register all services
-    ServiceProvider.register(this.container);
-
-    // Initialize shape loader to prepare shapes
-    const shapeLoader = new ShapeLoader(this.container.get("shapeRegistry"));
-    this.shapeLoader = shapeLoader;
-
-    this.isInitialized = true;
-
-    if (this.options.debug) {
-      console.log(
-        `%cRegistered ${this.container.getServiceNames().length} services`,
-        "color: #00aa00"
-      );
-    }
-  }
-
-  /**
-   * Mount application to DOM element
-   *
-   * Initializes the editor canvas and attaches to DOM.
-   *
-   * @param {HTMLElement|string} selector - DOM element or CSS selector
-   * @param {Object} [options] - Mount options
-   * @param {number} [options.width] - Canvas width (auto if not set)
-   * @param {number} [options.height] - Canvas height (auto if not set)
-   * @param {Array} [options.libraries] - Shape libraries to load
-   *
-   * @throws {Error} If selector is invalid or element not found
-   *
-   * @example
-   * app.mount('#editor');
-   *
-   * app.mount(document.getElementById('editor'), {
-   *   width: 1920,
-   *   height: 1080,
-   *   libraries: ['basic', 'flowchart']
-   * });
-   */
-  mount(selector, options = {}) {
-    if (!this.isInitialized) {
-      throw new Error("Application: Not initialized");
-    }
-
-    // Resolve DOM element
-    let element;
-
-    if (typeof selector === "string") {
-      element = document.querySelector(selector);
-      if (!element) {
-        throw new Error(
-          `Application.mount: Element not found for selector "${selector}"`
-        );
-      }
-    } else if (selector instanceof HTMLElement) {
-      element = selector;
-    } else {
-      throw new Error(
-        "Application.mount: Selector must be string or HTMLElement"
-      );
-    }
-
-    // Create container for editor
-    const editorContainer = document.createElement("div");
-    editorContainer.id = "editor-wrapper";
-    editorContainer.style.width = "100%";
-    editorContainer.style.height = "100%";
-    element.appendChild(editorContainer);
-
-    // Determine canvas dimensions
-    const width = options.width || editorContainer.clientWidth || 1200;
-    const height = options.height || editorContainer.clientHeight || 800;
-
-    // Mount editor
-    const editor = this.getService("editor");
-    editor.mount(editorContainer, {
-      width,
-      height,
-      backgroundColor: this.options.theme === "dark" ? "#1e1e1e" : "#ffffff",
-    });
-
-    // Load default shapes
-    this._loadShapes(options.libraries || ["basic"]);
-
-    // Trigger initial render
-    editor.render();
-
-    this.isMounted = true;
-
-    if (this.options.debug) {
-      console.log(
-        `%cEditor mounted to: ${selector} (${width}x${height})`,
-        "color: #00aa00"
-      );
-    }
-
-    // Emit ready event
-    this.emit("ready", {
-      editor,
-      width,
-      height,
-      timestamp: new Date(),
-    });
-
-    return editor;
-  }
-
-  /**
-   * Load shape libraries
-   *
-   * @private
-   */
-  async _loadShapes(libraries) {
-    if (!Array.isArray(libraries)) {
-      libraries = ["basic"];
+  async init() {
+    if (this.initialized) {
+      console.warn("Application already initialized");
+      return;
     }
 
     try {
-      // Load built-in shapes first
-      await this.shapeLoader.loadBuiltInShapes();
+      console.log("🚀 Initializing Flowchart Editor...");
 
-      if (this.options.debug) {
-        console.log("%cBuilt-in shapes loaded", "color: #00aa00");
+      // Step 1: Create service provider and register services
+      this._setupServices();
+
+      // Step 2: Initialize editor/canvas
+      this._setupEditor();
+
+      // Step 3: Register shapes
+      this._registerShapes();
+
+      // Step 4: Setup event handlers
+      this._setupEventHandlers();
+
+      // Step 5: Setup keyboard shortcuts
+      this._setupKeyboardShortcuts();
+
+      // Step 6: Setup UI (if needed)
+      if (this.options.features.ui !== false) {
+        this._setupUI();
       }
 
-      // Load requested libraries
-      for (const libraryName of libraries) {
-        try {
-          await this.shapeLoader.loadLibrary(libraryName);
+      // Step 7: Load initial data if provided
+      if (this.options.initialData) {
+        await this._loadInitialData(this.options.initialData);
+      }
 
-          if (this.options.debug) {
-            console.log(
-              `%cLoaded shape library: ${libraryName}`,
-              "color: #00aa00"
-            );
+      // Step 8: Apply theme
+      this.managers.themeManager.setTheme(this.options.theme);
+
+      this.initialized = true;
+      console.log("✅ Flowchart Editor initialized successfully");
+
+      // Emit ready event
+      this.emit("app:ready");
+    } catch (error) {
+      console.error("❌ Failed to initialize application:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Setup dependency injection container and register services
+   * @private
+   */
+  _setupServices() {
+    console.log("📦 Setting up services...");
+
+    this.serviceProvider = new ServiceProvider();
+
+    // Register core services
+    const eventBus = new EventBus();
+    const stateManager = new StateManager(eventBus);
+    const shapeRegistry = new ShapeRegistry();
+
+    this.serviceProvider.register("eventBus", eventBus, { singleton: true });
+    this.serviceProvider.register("stateManager", stateManager, {
+      singleton: true,
+    });
+    this.serviceProvider.register("shapeRegistry", shapeRegistry, {
+      singleton: true,
+    });
+
+    // Register managers
+    this.serviceProvider.register(
+      "nodeManager",
+      (provider) => {
+        return new NodeManager(
+          provider.resolve("eventBus"),
+          provider.resolve("stateManager"),
+          provider.resolve("shapeRegistry")
+        );
+      },
+      { singleton: true }
+    );
+
+    this.serviceProvider.register(
+      "edgeManager",
+      (provider) => {
+        return new EdgeManager(
+          provider.resolve("eventBus"),
+          provider.resolve("stateManager"),
+          provider.resolve("nodeManager")
+        );
+      },
+      { singleton: true }
+    );
+
+    this.serviceProvider.register(
+      "selectionManager",
+      (provider) => {
+        return new SelectionManager(
+          provider.resolve("eventBus"),
+          provider.resolve("stateManager")
+        );
+      },
+      { singleton: true }
+    );
+
+    this.serviceProvider.register(
+      "historyManager",
+      (provider) => {
+        return new HistoryManager(
+          provider.resolve("eventBus"),
+          provider.resolve("stateManager"),
+          { maxSize: this.options.maxHistorySize }
+        );
+      },
+      { singleton: true }
+    );
+
+    this.serviceProvider.register(
+      "clipboardManager",
+      (provider) => {
+        return new ClipboardManager(
+          provider.resolve("eventBus"),
+          provider.resolve("stateManager"),
+          provider.resolve("nodeManager"),
+          provider.resolve("edgeManager"),
+          provider.resolve("selectionManager")
+        );
+      },
+      { singleton: true }
+    );
+
+    this.serviceProvider.register(
+      "validationManager",
+      (provider) => {
+        return new ValidationManager(
+          provider.resolve("eventBus"),
+          provider.resolve("stateManager"),
+          provider.resolve("nodeManager"),
+          provider.resolve("edgeManager")
+        );
+      },
+      { singleton: true }
+    );
+
+    this.serviceProvider.register(
+      "exportManager",
+      (provider) => {
+        return new ExportManager(
+          provider.resolve("eventBus"),
+          provider.resolve("stateManager"),
+          provider.resolve("nodeManager"),
+          provider.resolve("edgeManager")
+        );
+      },
+      { singleton: true }
+    );
+
+    this.serviceProvider.register(
+      "themeManager",
+      (provider) => {
+        return new ThemeManager(
+          provider.resolve("eventBus"),
+          provider.resolve("stateManager")
+        );
+      },
+      { singleton: true }
+    );
+
+    this.serviceProvider.register(
+      "layerManager",
+      (provider) => {
+        return new LayerManager(
+          provider.resolve("eventBus"),
+          provider.resolve("stateManager")
+        );
+      },
+      { singleton: true }
+    );
+
+    this.serviceProvider.register(
+      "gridManager",
+      (provider) => {
+        return new GridManager(
+          provider.resolve("eventBus"),
+          provider.resolve("stateManager"),
+          {
+            enabled: this.options.gridEnabled,
+            size: this.options.gridSize,
+            snap: this.options.snapToGrid,
           }
-        } catch (error) {
-          console.warn(`Failed to load library '${libraryName}':`, error);
+        );
+      },
+      { singleton: true }
+    );
+
+    this.serviceProvider.register(
+      "toolManager",
+      (provider) => {
+        return new ToolManager(
+          provider.resolve("eventBus"),
+          provider.resolve("stateManager")
+        );
+      },
+      { singleton: true }
+    );
+
+    // Resolve all managers
+    this.managers = {
+      eventBus: this.serviceProvider.resolve("eventBus"),
+      stateManager: this.serviceProvider.resolve("stateManager"),
+      shapeRegistry: this.serviceProvider.resolve("shapeRegistry"),
+      nodeManager: this.serviceProvider.resolve("nodeManager"),
+      edgeManager: this.serviceProvider.resolve("edgeManager"),
+      selectionManager: this.serviceProvider.resolve("selectionManager"),
+      historyManager: this.serviceProvider.resolve("historyManager"),
+      clipboardManager: this.serviceProvider.resolve("clipboardManager"),
+      validationManager: this.serviceProvider.resolve("validationManager"),
+      exportManager: this.serviceProvider.resolve("exportManager"),
+      themeManager: this.serviceProvider.resolve("themeManager"),
+      layerManager: this.serviceProvider.resolve("layerManager"),
+      gridManager: this.serviceProvider.resolve("gridManager"),
+      toolManager: this.serviceProvider.resolve("toolManager"),
+    };
+
+    console.log("✓ Services registered");
+  }
+
+  /**
+   * Setup editor instance
+   * @private
+   */
+  _setupEditor() {
+    console.log("🎨 Setting up editor...");
+
+    this.editor = new Editor(this.container, {
+      width: this.options.width,
+      height: this.options.height,
+      minZoom: this.options.minZoom,
+      maxZoom: this.options.maxZoom,
+      gridEnabled: this.options.gridEnabled,
+      gridSize: this.options.gridSize,
+    });
+
+    // Connect editor to managers
+    this.editor.on("canvas:mousedown", this._handleCanvasMouseDown.bind(this));
+    this.editor.on("canvas:mousemove", this._handleCanvasMouseMove.bind(this));
+    this.editor.on("canvas:mouseup", this._handleCanvasMouseUp.bind(this));
+    this.editor.on(
+      "canvas:contextmenu",
+      this._handleCanvasContextMenu.bind(this)
+    );
+
+    console.log("✓ Editor created");
+  }
+
+  /**
+   * Register all shapes with shape registry
+   * @private
+   */
+  _registerShapes() {
+    console.log("📐 Registering shapes...");
+
+    const shapes = getAllShapeClasses();
+    let registeredCount = 0;
+
+    Object.entries(shapes).forEach(([id, ShapeClass]) => {
+      try {
+        this.managers.shapeRegistry.registerShape(id, ShapeClass);
+        registeredCount++;
+      } catch (error) {
+        console.warn(`Failed to register shape "${id}":`, error);
+      }
+    });
+
+    console.log(`✓ Registered ${registeredCount} shapes`);
+  }
+
+  /**
+   * Setup global event handlers
+   * @private
+   */
+  _setupEventHandlers() {
+    console.log("🔗 Setting up event handlers...");
+
+    const { eventBus, nodeManager, edgeManager, selectionManager } =
+      this.managers;
+
+    // Node events
+    eventBus.on("node:created", ({ nodeId }) => {
+      this._renderNode(nodeId);
+    });
+
+    eventBus.on("node:updated", ({ nodeId }) => {
+      this._renderNode(nodeId);
+    });
+
+    eventBus.on("node:deleted", ({ nodeId }) => {
+      this._removeNodeFromCanvas(nodeId);
+    });
+
+    // Edge events
+    eventBus.on("edge:created", ({ edgeId }) => {
+      this._renderEdge(edgeId);
+    });
+
+    eventBus.on("edge:updated", ({ edgeId }) => {
+      this._renderEdge(edgeId);
+    });
+
+    eventBus.on("edge:deleted", ({ edgeId }) => {
+      this._removeEdgeFromCanvas(edgeId);
+    });
+
+    // Selection events
+    eventBus.on("selection:changed", ({ selection }) => {
+      this._updateSelectionUI(selection);
+    });
+
+    // Viewport events
+    this.editor.on("viewport:changed", ({ viewport }) => {
+      this._handleViewportChange(viewport);
+    });
+
+    console.log("✓ Event handlers registered");
+  }
+
+  /**
+   * Setup keyboard shortcuts
+   * @private
+   */
+  _setupKeyboardShortcuts() {
+    console.log("⌨️  Setting up keyboard shortcuts...");
+
+    const { historyManager, clipboardManager, selectionManager, nodeManager } =
+      this.managers;
+
+    document.addEventListener("keydown", (e) => {
+      const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+      const modifier = isMac ? e.metaKey : e.ctrlKey;
+
+      // Undo: Ctrl/Cmd + Z
+      if (modifier && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        if (historyManager.canUndo()) {
+          historyManager.undo();
         }
       }
 
-      this.emit("shapes-loaded", {
-        count: this.shapeLoader.getLoadedShapesCount(),
-        libraries: this.shapeLoader.getLoadedLibraries(),
-      });
-    } catch (error) {
-      console.error("Failed to load shapes:", error);
-      this.emit("error", { error, type: "shape-loading" });
-    }
+      // Redo: Ctrl/Cmd + Shift + Z or Ctrl/Cmd + Y
+      if (
+        (modifier && e.key === "z" && e.shiftKey) ||
+        (modifier && e.key === "y")
+      ) {
+        e.preventDefault();
+        if (historyManager.canRedo()) {
+          historyManager.redo();
+        }
+      }
+
+      // Copy: Ctrl/Cmd + C
+      if (modifier && e.key === "c") {
+        e.preventDefault();
+        clipboardManager.copy();
+      }
+
+      // Cut: Ctrl/Cmd + X
+      if (modifier && e.key === "x") {
+        e.preventDefault();
+        clipboardManager.cut();
+      }
+
+      // Paste: Ctrl/Cmd + V
+      if (modifier && e.key === "v") {
+        e.preventDefault();
+        clipboardManager.paste();
+      }
+
+      // Duplicate: Ctrl/Cmd + D
+      if (modifier && e.key === "d") {
+        e.preventDefault();
+        clipboardManager.duplicate();
+      }
+
+      // Select All: Ctrl/Cmd + A
+      if (modifier && e.key === "a") {
+        e.preventDefault();
+        const allNodes = nodeManager.getAllNodes().map((n) => n.id);
+        selectionManager.selectNodes(allNodes);
+      }
+
+      // Delete: Delete or Backspace
+      if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
+        const selection = selectionManager.getSelection();
+        if (selection.count > 0) {
+          this.deleteSelection();
+        }
+      }
+
+      // Escape: Clear selection
+      if (e.key === "Escape") {
+        selectionManager.clearSelection();
+      }
+    });
+
+    console.log("✓ Keyboard shortcuts enabled");
   }
 
   /**
-   * Get service instance
-   *
-   * @param {string} serviceName - Service name
-   *
-   * @returns {*} Service instance
-   *
-   * @throws {Error} If service not found
-   *
-   * @example
-   * const nodeManager = app.getService('nodeManager');
-   * const eventBus = app.getService('eventBus');
-   */
-  getService(serviceName) {
-    if (!this.container.has(serviceName)) {
-      const available = this.container.getServiceNames();
-      throw new Error(
-        `Application: Service '${serviceName}' not found.\nAvailable: ${available.join(
-          ", "
-        )}`
-      );
-    }
-
-    return this.container.get(serviceName);
-  }
-
-  /**
-   * Check if service exists
-   *
-   * @param {string} serviceName - Service name
-   *
-   * @returns {boolean} True if service is registered
-   *
-   * @example
-   * if (app.hasService('nodeManager')) {
-   *   // Use service
-   * }
-   */
-  hasService(serviceName) {
-    return this.container.has(serviceName);
-  }
-
-  /**
-   * Get all registered service names
-   *
-   * @returns {string[]} Array of service names
-   *
-   * @example
-   * const services = app.getServiceNames();
-   */
-  getServiceNames() {
-    return this.container.getServiceNames();
-  }
-
-  /**
-   * Register event listener
-   *
-   * @param {string} eventName - Event name
-   * @param {Function} handler - Event handler
-   *
-   * @example
-   * app.on('ready', () => console.log('App ready'));
-   * app.on('error', (err) => console.error(err));
-   */
-  on(eventName, handler) {
-    if (typeof eventName !== "string" || typeof handler !== "function") {
-      throw new Error(
-        "Application.on: Requires event name and handler function"
-      );
-    }
-
-    if (!this.eventListeners.has(eventName)) {
-      this.eventListeners.set(eventName, []);
-    }
-
-    this.eventListeners.get(eventName).push(handler);
-  }
-
-  /**
-   * Unregister event listener
-   *
-   * @param {string} eventName - Event name
-   * @param {Function} handler - Event handler
-   *
-   * @example
-   * app.off('ready', handler);
-   */
-  off(eventName, handler) {
-    if (!this.eventListeners.has(eventName)) {
-      return;
-    }
-
-    const handlers = this.eventListeners.get(eventName);
-    const index = handlers.indexOf(handler);
-
-    if (index > -1) {
-      handlers.splice(index, 1);
-    }
-  }
-
-  /**
-   * Emit application event
-   *
+   * Setup UI components (optional)
    * @private
-   *
-   * @param {string} eventName - Event name
-   * @param {Object} data - Event data
    */
-  emit(eventName, data = {}) {
-    if (!this.eventListeners.has(eventName)) {
-      return;
+  _setupUI() {
+    // This would initialize toolbar, panels, etc.
+    // For now, just a placeholder
+    console.log("🎛️  UI components ready");
+  }
+
+  /**
+   * Load initial data
+   * @private
+   */
+  async _loadInitialData(data) {
+    console.log("📂 Loading initial data...");
+
+    try {
+      if (typeof data === "string") {
+        // Assume it's a JSON string or URL
+        if (data.startsWith("http")) {
+          const response = await fetch(data);
+          data = await response.json();
+        } else {
+          data = JSON.parse(data);
+        }
+      }
+
+      this.managers.exportManager.importJSON(JSON.stringify(data));
+      console.log("✓ Initial data loaded");
+    } catch (error) {
+      console.error("Failed to load initial data:", error);
     }
+  }
 
-    const handlers = this.eventListeners.get(eventName);
+  /**
+   * Handle canvas mouse down
+   * @private
+   */
+  _handleCanvasMouseDown({ point, event }) {
+    const { nodeManager, edgeManager, selectionManager, toolManager } =
+      this.managers;
+    const tool = toolManager.getActiveTool();
 
-    for (const handler of handlers) {
-      try {
-        handler(data);
-      } catch (error) {
-        console.error(`Error in event handler for '${eventName}':`, error);
+    // Check if clicked on a node
+    const clickedNode = this._getNodeAtPoint(point);
+
+    if (clickedNode) {
+      // Node clicked
+      if (event.shiftKey) {
+        selectionManager.selectNode(clickedNode.id, { mode: "add" });
+      } else if (event.ctrlKey || event.metaKey) {
+        selectionManager.selectNode(clickedNode.id, { mode: "toggle" });
+      } else {
+        if (!selectionManager.isNodeSelected(clickedNode.id)) {
+          selectionManager.selectNode(clickedNode.id);
+        }
+        // Start dragging
+        this._startDragging(clickedNode, point);
+      }
+    } else {
+      // Canvas clicked - start selection box or create new node based on tool
+      if (tool === "select") {
+        if (!event.shiftKey) {
+          selectionManager.clearSelection();
+        }
+        this._startSelectionBox(point);
+      } else if (tool && tool !== "select" && tool !== "pan") {
+        // Create new node
+        this.createNode({
+          type: tool,
+          x: point.x,
+          y: point.y,
+        });
       }
     }
   }
 
   /**
-   * Get application info
-   *
-   * @returns {Object} Application information
-   *
-   * @example
-   * const info = app.getInfo();
-   */
-  getInfo() {
-    return {
-      isInitialized: this.isInitialized,
-      isMounted: this.isMounted,
-      isDestroyed: this.isDestroyed,
-      debug: this.options.debug,
-      theme: this.options.theme,
-      totalServices: this.container.getServiceNames().length,
-      services: this.container.getServiceNames(),
-      loadedShapes: this.shapeLoader.getLoadedShapes().length,
-      loadedLibraries: this.shapeLoader.getLoadedLibraries(),
-    };
-  }
-
-  /**
-   * Print application info
-   *
+   * Handle canvas mouse move
    * @private
    */
-  _printInfo() {
-    const info = this.getInfo();
-
-    console.group("%cApplication Info", "color: #0066cc; font-weight: bold");
-    console.log(`Theme: ${info.theme}`);
-    console.log(`Debug Mode: ${info.debug}`);
-    console.log(`Total Services: ${info.totalServices}`);
-
-    console.group("Registered Services");
-    info.services.forEach((name) => {
-      console.log(`  • ${name}`);
-    });
-    console.groupEnd();
-
-    console.groupEnd();
+  _handleCanvasMouseMove({ point, event }) {
+    if (this.isDragging) {
+      this._updateDragging(point);
+    } else if (this.isSelectionBox) {
+      this._updateSelectionBox(point);
+    }
   }
 
   /**
-   * Destroy application and cleanup
-   *
-   * Removes all DOM elements and event listeners.
-   *
-   * @example
-   * app.destroy();
+   * Handle canvas mouse up
+   * @private
+   */
+  _handleCanvasMouseUp({ point, event }) {
+    if (this.isDragging) {
+      this._endDragging();
+    } else if (this.isSelectionBox) {
+      this._endSelectionBox(point);
+    }
+  }
+
+  /**
+   * Handle canvas context menu
+   * @private
+   */
+  _handleCanvasContextMenu({ point, event }) {
+    const clickedNode = this._getNodeAtPoint(point);
+
+    if (clickedNode) {
+      this._showNodeContextMenu(clickedNode, point);
+    } else {
+      this._showCanvasContextMenu(point);
+    }
+  }
+
+  /**
+   * Handle viewport change
+   * @private
+   */
+  _handleViewportChange(viewport) {
+    // Update UI elements that depend on viewport
+    this.emit("viewport:updated", { viewport });
+  }
+
+  /**
+   * Render node on canvas
+   * @private
+   */
+  _renderNode(nodeId) {
+    const node = this.managers.nodeManager.getNode(nodeId);
+    if (!node) return;
+
+    const shapeClass = this.managers.shapeRegistry.getShape(node.type);
+    if (!shapeClass) return;
+
+    const shape = new shapeClass({ id: node.type });
+    const container = this.editor.getLayer("content");
+
+    // Remove old rendering if exists
+    const existing = container.querySelector(`[data-node-id="${nodeId}"]`);
+    if (existing) {
+      existing.remove();
+    }
+
+    // Create new group for node
+    const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    group.setAttribute("data-node-id", nodeId);
+    group.setAttribute("data-node-type", node.type);
+
+    // Render shape
+    shape.render(group, node);
+
+    // Add to canvas
+    container.appendChild(group);
+  }
+
+  /**
+   * Remove node from canvas
+   * @private
+   */
+  _removeNodeFromCanvas(nodeId) {
+    const container = this.editor.getLayer("content");
+    const element = container.querySelector(`[data-node-id="${nodeId}"]`);
+    if (element) {
+      element.remove();
+    }
+  }
+
+  /**
+   * Render edge on canvas
+   * @private
+   */
+  _renderEdge(edgeId) {
+    const edge = this.managers.edgeManager.getEdge(edgeId);
+    if (!edge) return;
+
+    const sourceNode = this.managers.nodeManager.getNode(edge.sourceId);
+    const targetNode = this.managers.nodeManager.getNode(edge.targetId);
+
+    if (!sourceNode || !targetNode) return;
+
+    const container = this.editor.getLayer("content");
+
+    // Remove old rendering if exists
+    const existing = container.querySelector(`[data-edge-id="${edgeId}"]`);
+    if (existing) {
+      existing.remove();
+    }
+
+    // Calculate edge path
+    const sourceBounds = this.managers.nodeManager.getNodeBounds(edge.sourceId);
+    const targetBounds = this.managers.nodeManager.getNodeBounds(edge.targetId);
+
+    // Simple straight line for now
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line.setAttribute("data-edge-id", edgeId);
+    line.setAttribute("x1", sourceBounds.centerX);
+    line.setAttribute("y1", sourceBounds.centerY);
+    line.setAttribute("x2", targetBounds.centerX);
+    line.setAttribute("y2", targetBounds.centerY);
+    line.setAttribute("stroke", edge.style?.stroke || "#000000");
+    line.setAttribute("stroke-width", edge.style?.strokeWidth || 2);
+    line.setAttribute("marker-end", "url(#arrowhead)");
+
+    container.insertBefore(line, container.firstChild); // Edges below nodes
+  }
+
+  /**
+   * Remove edge from canvas
+   * @private
+   */
+  _removeEdgeFromCanvas(edgeId) {
+    const container = this.editor.getLayer("content");
+    const element = container.querySelector(`[data-edge-id="${edgeId}"]`);
+    if (element) {
+      element.remove();
+    }
+  }
+
+  /**
+   * Update selection UI
+   * @private
+   */
+  _updateSelectionUI(selection) {
+    const overlay = this.editor.getLayer("overlay");
+
+    // Clear existing selection visuals
+    const existing = overlay.querySelectorAll(".selection-box");
+    existing.forEach((el) => el.remove());
+
+    // Draw selection boxes for selected nodes
+    selection.nodes.forEach((nodeId) => {
+      const bounds = this.managers.nodeManager.getNodeBounds(nodeId);
+      if (!bounds) return;
+
+      const rect = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "rect"
+      );
+      rect.setAttribute("class", "selection-box");
+      rect.setAttribute("x", bounds.x - 2);
+      rect.setAttribute("y", bounds.y - 2);
+      rect.setAttribute("width", bounds.width + 4);
+      rect.setAttribute("height", bounds.height + 4);
+      rect.setAttribute("fill", "none");
+      rect.setAttribute("stroke", "#2196f3");
+      rect.setAttribute("stroke-width", 2);
+      rect.setAttribute("stroke-dasharray", "5,5");
+
+      overlay.appendChild(rect);
+    });
+  }
+
+  /**
+   * Get node at point
+   * @private
+   */
+  _getNodeAtPoint(point) {
+    const nodes = this.managers.nodeManager.getAllNodes();
+
+    for (const node of nodes) {
+      const bounds = this.managers.nodeManager.getNodeBounds(node.id);
+      if (
+        point.x >= bounds.x &&
+        point.x <= bounds.x + bounds.width &&
+        point.y >= bounds.y &&
+        point.y <= bounds.y + bounds.height
+      ) {
+        return node;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Start dragging nodes
+   * @private
+   */
+  _startDragging(node, startPoint) {
+    this.isDragging = true;
+    this.dragStartPoint = startPoint;
+    this.draggedNodes = this.managers.selectionManager.getSelection().nodes;
+    this.dragStartPositions = {};
+
+    this.draggedNodes.forEach((nodeId) => {
+      const n = this.managers.nodeManager.getNode(nodeId);
+      this.dragStartPositions[nodeId] = { x: n.x, y: n.y };
+    });
+  }
+
+  /**
+   * Update dragging
+   * @private
+   */
+  _updateDragging(point) {
+    const dx = point.x - this.dragStartPoint.x;
+    const dy = point.y - this.dragStartPoint.y;
+
+    this.draggedNodes.forEach((nodeId) => {
+      const startPos = this.dragStartPositions[nodeId];
+      let newX = startPos.x + dx;
+      let newY = startPos.y + dy;
+
+      // Snap to grid if enabled
+      if (this.managers.gridManager.isSnapEnabled()) {
+        const gridSize = this.managers.gridManager.getGridSize();
+        newX = Math.round(newX / gridSize) * gridSize;
+        newY = Math.round(newY / gridSize) * gridSize;
+      }
+
+      this.managers.nodeManager.updateNode(nodeId, { x: newX, y: newY });
+    });
+  }
+
+  /**
+   * End dragging
+   * @private
+   */
+  _endDragging() {
+    this.isDragging = false;
+    // Could add to history here
+  }
+
+  /**
+   * Start selection box
+   * @private
+   */
+  _startSelectionBox(startPoint) {
+    this.isSelectionBox = true;
+    this.selectionBoxStart = startPoint;
+  }
+
+  /**
+   * Update selection box
+   * @private
+   */
+  _updateSelectionBox(point) {
+    // Draw selection box rectangle
+    const overlay = this.editor.getLayer("overlay");
+
+    let box = overlay.querySelector(".selection-box-rect");
+    if (!box) {
+      box = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      box.setAttribute("class", "selection-box-rect");
+      box.setAttribute("fill", "rgba(33, 150, 243, 0.1)");
+      box.setAttribute("stroke", "#2196f3");
+      box.setAttribute("stroke-width", 1);
+      overlay.appendChild(box);
+    }
+
+    const x = Math.min(this.selectionBoxStart.x, point.x);
+    const y = Math.min(this.selectionBoxStart.y, point.y);
+    const width = Math.abs(point.x - this.selectionBoxStart.x);
+    const height = Math.abs(point.y - this.selectionBoxStart.y);
+
+    box.setAttribute("x", x);
+    box.setAttribute("y", y);
+    box.setAttribute("width", width);
+    box.setAttribute("height", height);
+  }
+
+  /**
+   * End selection box
+   * @private
+   */
+  _endSelectionBox(endPoint) {
+    this.isSelectionBox = false;
+
+    // Calculate selection box bounds
+    const x = Math.min(this.selectionBoxStart.x, endPoint.x);
+    const y = Math.min(this.selectionBoxStart.y, endPoint.y);
+    const width = Math.abs(endPoint.x - this.selectionBoxStart.x);
+    const height = Math.abs(endPoint.y - this.selectionBoxStart.y);
+
+    // Find nodes within selection box
+    const nodes = this.managers.nodeManager.getAllNodes();
+    const selectedNodes = nodes
+      .filter((node) => {
+        const bounds = this.managers.nodeManager.getNodeBounds(node.id);
+        return (
+          bounds.x >= x &&
+          bounds.y >= y &&
+          bounds.x + bounds.width <= x + width &&
+          bounds.y + bounds.height <= y + height
+        );
+      })
+      .map((n) => n.id);
+
+    if (selectedNodes.length > 0) {
+      this.managers.selectionManager.selectNodes(selectedNodes, {
+        mode: "add",
+      });
+    }
+
+    // Remove selection box visual
+    const overlay = this.editor.getLayer("overlay");
+    const box = overlay.querySelector(".selection-box-rect");
+    if (box) {
+      box.remove();
+    }
+  }
+
+  /**
+   * Show node context menu
+   * @private
+   */
+  _showNodeContextMenu(node, point) {
+    // Implement context menu
+    console.log("Show node context menu", node, point);
+  }
+
+  /**
+   * Show canvas context menu
+   * @private
+   */
+  _showCanvasContextMenu(point) {
+    // Implement context menu
+    console.log("Show canvas context menu", point);
+  }
+
+  // ==================== Public API ====================
+
+  /**
+   * Create a new node
+   */
+  createNode(data) {
+    return this.managers.nodeManager.createNode(data);
+  }
+
+  /**
+   * Create a new edge
+   */
+  createEdge(data) {
+    return this.managers.edgeManager.createEdge(data);
+  }
+
+  /**
+   * Delete selected items
+   */
+  deleteSelection() {
+    const selection = this.managers.selectionManager.getSelection();
+
+    // Delete edges first
+    selection.edges.forEach((edgeId) => {
+      this.managers.edgeManager.deleteEdge(edgeId);
+    });
+
+    // Delete nodes
+    selection.nodes.forEach((nodeId) => {
+      this.managers.nodeManager.deleteNode(nodeId);
+    });
+
+    this.managers.selectionManager.clearSelection();
+  }
+
+  /**
+   * Export diagram as JSON
+   */
+  exportJSON() {
+    return this.managers.exportManager.exportJSON();
+  }
+
+  /**
+   * Import diagram from JSON
+   */
+  importJSON(json) {
+    return this.managers.exportManager.importJSON(json);
+  }
+
+  /**
+   * Export diagram as SVG
+   */
+  exportSVG() {
+    return this.editor.exportSVG();
+  }
+
+  /**
+   * Clear all content
+   */
+  clear() {
+    this.managers.nodeManager.clearAll();
+    this.managers.edgeManager.clearAll();
+    this.managers.selectionManager.clearSelection();
+    this.managers.historyManager.clear();
+    this.editor.clear();
+  }
+
+  /**
+   * Validate diagram
+   */
+  validate() {
+    return this.managers.validationManager.validate();
+  }
+
+  /**
+   * Fit content to viewport
+   */
+  fitToContent() {
+    this.editor.fitToContent();
+  }
+
+  /**
+   * Zoom to specific level
+   */
+  zoom(level) {
+    this.editor.setZoom(level);
+  }
+
+  /**
+   * Reset viewport
+   */
+  resetViewport() {
+    this.editor.resetViewport();
+  }
+
+  /**
+   * Get manager instance
+   */
+  getManager(name) {
+    return this.managers[name];
+  }
+
+  /**
+   * Get editor instance
+   */
+  getEditor() {
+    return this.editor;
+  }
+
+  /**
+   * Emit custom event
+   */
+  emit(event, data) {
+    this.managers.eventBus.emit(event, data);
+  }
+
+  /**
+   * Listen to event
+   */
+  on(event, handler) {
+    this.managers.eventBus.on(event, handler);
+  }
+
+  /**
+   * Remove event listener
+   */
+  off(event, handler) {
+    this.managers.eventBus.off(event, handler);
+  }
+
+  /**
+   * Destroy application
    */
   destroy() {
-    if (this.isDestroyed) {
-      return;
-    }
+    console.log("🗑️  Destroying application...");
+
+    // Destroy all managers
+    Object.values(this.managers).forEach((manager) => {
+      if (manager && typeof manager.destroy === "function") {
+        manager.destroy();
+      }
+    });
 
     // Destroy editor
-    try {
-      const editor = this.container.get("editor");
-      editor.destroy();
-    } catch (error) {
-      console.warn("Error destroying editor:", error);
+    if (this.editor) {
+      this.editor.destroy();
     }
 
-    // Clear event listeners
-    this.eventListeners.clear();
-
-    // Remove DOM element
-    const wrapper = document.getElementById("editor-wrapper");
-    if (wrapper && wrapper.parentElement) {
-      wrapper.parentElement.removeChild(wrapper);
-    }
-
-    // Mark as destroyed
-    this.isDestroyed = true;
-    this.isMounted = false;
-
-    this.emit("destroyed", { timestamp: new Date() });
-
-    if (this.options.debug) {
-      console.log("%cApplication destroyed", "color: #cc0000");
-    }
+    this.initialized = false;
+    console.log("✅ Application destroyed");
   }
 }
 
 /**
- * Create application instance
- *
- * Convenience function to create and initialize app.
- *
- * @param {Object} [options] - Application options
- *
- * @returns {Application} Application instance
- *
- * @example
- * import { createApp } from './app.js';
- *
- * const app = createApp({ debug: true });
- * app.mount('#editor');
+ * Create and initialize application
  */
-function createApp(options = {}) {
-  return new Application(options);
+export async function createFlowchartApp(containerSelector, options = {}) {
+  const app = new FlowchartApp(containerSelector, options);
+  await app.init();
+  return app;
 }
 
-/**
- * Initialize application when DOM is ready
- */
-function initializeApp() {
-  try {
-    // Create app instance
-    const app = createApp({
-      debug: true,
-      theme: "light",
-    });
+// Export app class
+export { FlowchartApp };
 
-    // Mount to #app container
-    app.mount("#app", {
-      libraries: ["basic"],
-    });
-
-    // Expose app globally for debugging
-    window.flowchartApp = app;
-
-    console.log(
-      "%c✅ Flowchart Editor initialized and mounted",
-      "color: #00aa00; font-weight: bold"
-    );
-
-    return app;
-  } catch (error) {
-    console.error(
-      "%c❌ Failed to initialize Flowchart Editor:",
-      "color: #cc0000; font-weight: bold",
-      error
-    );
-    throw error;
-  }
-}
-
-/**
- * Application entry point
- */
-if (typeof window !== "undefined" && typeof document !== "undefined") {
-  // Wait for DOM to be ready
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initializeApp);
-  } else {
-    // DOM is already loaded
-    initializeApp();
-  }
-}
-
-// Export for use in modules
-export { Application, createApp, initializeApp };
-
-// Expose to window for browser access
+// Auto-initialize if data-flowchart attribute is present
 if (typeof window !== "undefined") {
-  window.FlowchartEditor = {
-    Application,
-    createApp,
-    initializeApp,
-  };
+  window.addEventListener("DOMContentLoaded", () => {
+    const containers = document.querySelectorAll("[data-flowchart]");
+    containers.forEach((container) => {
+      const options = container.dataset.flowchartOptions
+        ? JSON.parse(container.dataset.flowchartOptions)
+        : {};
+
+      createFlowchartApp(`#${container.id}`, options)
+        .then((app) => {
+          // Store app instance on container
+          container.flowchartApp = app;
+        })
+        .catch((error) => {
+          console.error("Failed to initialize flowchart app:", error);
+        });
+    });
+  });
 }

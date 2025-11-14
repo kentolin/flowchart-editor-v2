@@ -39,7 +39,7 @@ import { EdgeView } from "../views/EdgeView.js";
 
 // Shape System
 import { ShapeRegistry } from "../../shapes/registry/ShapeRegistry.js";
-import { ShapeBuilder } from "../../shapes/builder/ShapeBuilder.js";
+import { ShapeBuilder } from "../../shapes/base/ShapeBuilder.js";
 
 // Managers (Business Logic)
 import { NodeManager } from "../managers/NodeManager.js";
