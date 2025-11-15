@@ -124,15 +124,15 @@ class FlowchartApp {
     // Create service provider
     this.services = new ServiceProvider();
 
+    this.services.register("eventBus", this.eventBus, { singleton: true });
+    this.services.register("stateManager", this.stateManager, {
+      singleton: true,
+    });
     // Register core services
     this.eventBus = new EventBus();
     this.stateManager = new StateManager(this.eventBus);
     const shapeRegistry = new ShapeRegistry();
 
-    this.services.register("eventBus", this.eventBus, { singleton: true });
-    this.services.register("stateManager", this.stateManager, {
-      singleton: true,
-    });
     this.services.register("shapeRegistry", shapeRegistry, { singleton: true });
 
     // Register managers

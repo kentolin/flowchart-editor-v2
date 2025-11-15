@@ -4,6 +4,21 @@
  */
 
 export class DebugLogger {
+  /**
+   * Create a logger instance for a specific class instance
+   */
+  static for(instance, options = {}) {
+    const moduleName = instance?.constructor?.name || "UnknownModule";
+    return new DebugLogger(moduleName, options);
+  }
+
+  /**
+   * Create a logger instance for a specific module
+   */
+  static get(moduleName, options = {}) {
+    return new DebugLogger(moduleName, options);
+  }
+
   constructor(moduleName, options = {}) {
     this.moduleName = moduleName;
     this.enabled = options.enabled ?? this.isDebugMode();
