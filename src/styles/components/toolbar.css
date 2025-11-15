@@ -1,0 +1,74 @@
+/**
+ * toolbar.css - Tool bar styles
+ */
+
+.tool-bar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: var(--spacing-sm) var(--spacing-md);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  height: var(--toolbar-height);
+  box-shadow: var(--shadow-sm);
+  z-index: var(--z-toolbar);
+}
+
+.tool-group {
+  display: flex;
+  gap: var(--spacing-xs);
+  align-items: center;
+}
+
+.tool-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: var(--spacing-sm);
+  min-width: 36px;
+  height: 36px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  color: var(--text-primary);
+}
+
+.tool-btn:hover {
+  background: var(--surface-hover);
+  border-color: var(--primary-color);
+}
+
+.tool-btn:active {
+  transform: scale(0.95);
+}
+
+.tool-btn.active {
+  background: var(--primary-color);
+  color: var(--primary-contrast);
+  border-color: var(--primary-color);
+}
+
+.tool-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tool-btn span {
+  font-size: 1.125rem;
+  line-height: 1;
+}
+
+.tool-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border);
+  margin: 0 var(--spacing-sm);
+}
+
+.tool-label {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin-left: var(--spacing-xs);
+}

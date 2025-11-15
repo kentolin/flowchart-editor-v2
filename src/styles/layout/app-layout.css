@@ -1,0 +1,99 @@
+/**
+ * app-layout.css - Main application layout
+ */
+
+#app {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.flowchart-editor-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--background);
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  position: relative;
+}
+
+.editor-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.editor-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: var(--canvas-background);
+}
+
+.editor-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Layers */
+.layer-grid,
+.layer-content,
+.layer-overlay,
+.layer-ui {
+  pointer-events: none;
+}
+
+.layer-content > *,
+.layer-overlay > *,
+.layer-ui > * {
+  pointer-events: auto;
+}
+
+/* Grid */
+.layer-grid line {
+  stroke: var(--canvas-grid);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+.layer-grid line.major {
+  stroke: var(--canvas-grid-major);
+}
+
+/* Mini Map */
+.mini-map {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  width: 200px;
+  height: 150px;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  z-index: var(--z-overlay);
+}
+
+.minimap-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.minimap-viewport {
+  position: absolute;
+  border: 2px solid var(--primary-color);
+  background: var(--primary-color) 20;
+  pointer-events: none;
+}

@@ -1,0 +1,81 @@
+/**
+ * edges.css - Edge/Connection styles
+ */
+
+.edge {
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+.edge-path {
+  fill: none;
+  stroke: var(--edge-stroke);
+  stroke-width: 2;
+  transition: all var(--transition-fast);
+}
+
+.edge:hover .edge-path {
+  stroke: var(--edge-hover);
+  stroke-width: 3;
+}
+
+.edge.selected .edge-path {
+  stroke: var(--edge-selected);
+  stroke-width: 3;
+}
+
+.edge-path.dashed {
+  stroke-dasharray: 5, 5;
+}
+
+.edge-path.dotted {
+  stroke-dasharray: 2, 3;
+}
+
+.edge-label {
+  fill: var(--text-primary);
+  font-size: 12px;
+  font-family: var(--font-family);
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+  user-select: none;
+}
+
+.edge-label-bg {
+  fill: var(--surface);
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+/* Arrow markers */
+marker path {
+  fill: var(--edge-stroke);
+  transition: fill var(--transition-fast);
+}
+
+.edge:hover marker path {
+  fill: var(--edge-hover);
+}
+
+.edge.selected marker path {
+  fill: var(--edge-selected);
+}
+
+/* Edge creation preview */
+.edge-preview {
+  pointer-events: none;
+}
+
+.edge-preview .edge-path {
+  stroke: var(--primary-color);
+  stroke-width: 2;
+  stroke-dasharray: 5, 5;
+  animation: dash 0.5s linear infinite;
+}
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: -10;
+  }
+}

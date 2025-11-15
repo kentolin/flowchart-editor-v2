@@ -1,0 +1,84 @@
+/**
+ * nodes.css - Node styles for canvas
+ */
+
+.node {
+  cursor: move;
+  transition: filter var(--transition-fast);
+}
+
+.node:hover {
+  filter: brightness(1.05);
+}
+
+.node.selected {
+  filter: drop-shadow(0 0 8px var(--primary-color));
+}
+
+.node.dragging {
+  opacity: 0.7;
+  cursor: grabbing;
+}
+
+.node-shape {
+  fill: var(--node-fill);
+  stroke: var(--node-stroke);
+  stroke-width: 2;
+  transition: all var(--transition-fast);
+}
+
+.node:hover .node-shape {
+  fill: var(--node-hover);
+}
+
+.node.selected .node-shape {
+  stroke: var(--node-selected);
+  stroke-width: 3;
+}
+
+.node-label {
+  fill: var(--text-primary);
+  font-size: 14px;
+  font-family: var(--font-family);
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+  user-select: none;
+}
+
+.node-port {
+  fill: var(--surface);
+  stroke: var(--border-dark);
+  stroke-width: 2;
+  cursor: crosshair;
+  transition: all var(--transition-fast);
+}
+
+.node-port:hover {
+  fill: var(--primary-color);
+  stroke: var(--primary-dark);
+  transform: scale(1.2);
+}
+
+.node-port.active {
+  fill: var(--success);
+  stroke: var(--success);
+}
+
+.node-resize-handle {
+  fill: var(--primary-color);
+  stroke: var(--surface);
+  stroke-width: 1;
+  cursor: nwse-resize;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.node.selected .node-resize-handle {
+  opacity: 1;
+}
+
+.node-resize-handle:hover {
+  fill: var(--primary-dark);
+  transform: scale(1.3);
+}

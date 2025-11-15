@@ -1,0 +1,29 @@
+/**
+ * main.css - Main stylesheet entry point
+ * Imports all modular CSS files
+ */
+
+/* Base styles */
+@import "./base/variables.css";
+@import "./base/reset.css";
+@import "./base/theme.css";
+
+/* Layout */
+@import "./layout/app-layout.css";
+@import "./layout/left-panel.css";
+@import "./layout/right-panel.css";
+
+/* Components */
+@import "./components/menu.css";
+@import "./components/toolbar.css";
+@import "./components/statusbar.css";
+@import "./components/panels.css";
+@import "./components/nodes.css";
+@import "./components/edges.css";
+
+/* Overlays and dialogs */
+@import "./overlays.css";
+@import "./dialogs.css";
+
+/* Animations */
+@import "./animations.css";

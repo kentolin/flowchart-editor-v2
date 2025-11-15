@@ -1,0 +1,41 @@
+/**
+ * left-panel.css - Left side panel layout
+ */
+
+.left-panel {
+  width: var(--panel-width);
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.left-panel .panel-header {
+  border-bottom: 1px solid var(--border);
+}
+
+.left-panel .panel-content {
+  padding: 0;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .left-panel {
+    width: 220px;
+  }
+}
+
+@media (max-width: 768px) {
+  .left-panel {
+    position: absolute;
+    top: calc(var(--header-height) + var(--toolbar-height));
+    left: -260px;
+    bottom: var(--statusbar-height);
+    width: 260px;
+    z-index: var(--z-panels);
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+    transition: left var(--transition-base);
+  }
+
+  .left-panel.open {
+    left: 0;
+  }
+}

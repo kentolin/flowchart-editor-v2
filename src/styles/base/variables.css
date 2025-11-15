@@ -1,0 +1,150 @@
+/**
+ * variables.css - CSS Custom Properties (Variables)
+ */
+
+:root {
+  /* Colors - Primary */
+  --primary-color: #2196f3;
+  --primary-light: #64b5f6;
+  --primary-dark: #1976d2;
+  --primary-contrast: #ffffff;
+
+  /* Colors - Secondary */
+  --secondary-color: #f50057;
+  --secondary-light: #ff4081;
+  --secondary-dark: #c51162;
+
+  /* Colors - Neutral */
+  --background: #fafafa;
+  --surface: #ffffff;
+  --surface-hover: #f5f5f5;
+  --border: #e0e0e0;
+  --border-light: #eeeeee;
+  --border-dark: #bdbdbd;
+
+  /* Colors - Text */
+  --text-primary: #212121;
+  --text-secondary: #757575;
+  --text-disabled: #9e9e9e;
+  --text-hint: #bdbdbd;
+
+  /* Colors - Status */
+  --success: #4caf50;
+  --warning: #ff9800;
+  --error: #f44336;
+  --info: #2196f3;
+
+  /* Colors - Canvas */
+  --canvas-background: #ffffff;
+  --canvas-grid: #e0e0e0;
+  --canvas-grid-major: #bdbdbd;
+
+  /* Colors - Node */
+  --node-fill: #ffffff;
+  --node-stroke: #424242;
+  --node-selected: #2196f3;
+  --node-hover: #e3f2fd;
+
+  /* Colors - Edge */
+  --edge-stroke: #757575;
+  --edge-selected: #2196f3;
+  --edge-hover: #1976d2;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12);
+  --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.16);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.15);
+  --shadow-xl: 0 8px 24px rgba(0, 0, 0, 0.15);
+
+  /* Spacing */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+
+  /* Border Radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-round: 50%;
+
+  /* Typography */
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-family-mono: "Courier New", Courier, monospace;
+
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-md: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+
+  /* Layout */
+  --header-height: 40px;
+  --toolbar-height: 48px;
+  --statusbar-height: 32px;
+  --panel-width: 250px;
+  --inspector-width: 280px;
+
+  /* Z-Index */
+  --z-canvas: 1;
+  --z-nodes: 10;
+  --z-edges: 5;
+  --z-overlay: 50;
+  --z-panels: 100;
+  --z-toolbar: 200;
+  --z-menu: 300;
+  --z-dialog: 1000;
+  --z-tooltip: 2000;
+
+  /* Transitions */
+  --transition-fast: 150ms ease-out;
+  --transition-base: 250ms ease-out;
+  --transition-slow: 350ms ease-out;
+
+  /* Animation Timing */
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Dark Theme Variables */
+[data-theme="dark"] {
+  --background: #121212;
+  --surface: #1e1e1e;
+  --surface-hover: #2a2a2a;
+  --border: #333333;
+  --border-light: #404040;
+  --border-dark: #2a2a2a;
+
+  --text-primary: #e0e0e0;
+  --text-secondary: #b0b0b0;
+  --text-disabled: #757575;
+  --text-hint: #616161;
+
+  --canvas-background: #1a1a1a;
+  --canvas-grid: #333333;
+  --canvas-grid-major: #404040;
+
+  --node-fill: #2a2a2a;
+  --node-stroke: #e0e0e0;
+  --node-hover: #1e3a5f;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.6);
+  --shadow-xl: 0 8px 24px rgba(0, 0, 0, 0.7);
+}
