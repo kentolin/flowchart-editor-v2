@@ -7,23 +7,23 @@ class FlowchartApp {
       debug: false,
       ...options,
     };
-    // Initialize debug logger
+
     if (this.options.debug) {
       DebugControl.enableGlobal();
     } else {
       DebugControl.disableGlobal();
     }
     this.log = DebugLogger.for(this);
-    this.log.info("FlowchartApp initialized", this.options);
+    this.log.enter("constructor");
+    this.log.exit("constructor");
   }
 
   async initialize() {
-    this.log.info("Initializing FlowchartApp...");
+    this.log.enter("initialize");
 
-    // Simulate async initialization tasks
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
-    this.log.info("FlowchartApp initialized successfully.");
+    this.log.exit("initialize");
   }
 }
 
@@ -47,7 +47,10 @@ if (typeof window !== "undefined") {
       else console.error("Error initializing FlowchartApp:", error);
     } finally {
       if (loader) {
-        loader.style.display = "none";
+        loader.classList.add("hide");
+        setTimeout(() => {
+          loader.style.display = "none";
+        }, 500);
       }
     }
   };
