@@ -76,6 +76,18 @@ Step 7: Setup Event Handlers
 
 ```
 
-```
+# Async, await and sync functions
 
-```
+A function only needs to be async if it performs an asynchronous operation (like fetching a file, reading a database, or using setTimeout).
+
+Functions that just do synchronous work (like creating a div, adding an event listener, or creating a new object) should be regular, non-async functions.
+
+## Parallel vs. Sequential (The Simple Answer)
+
+This is the key to your question:
+
+To run a function sequentially: Use await on it inside your async initialize(). This forces the code to wait for it to finish, whether it's async or not.
+
+To run a function in parallel: Call an async function without await. This is a "fire and forget" call.
+
+Calling a regular (non-async) function always runs sequentially. Your code will wait for it to finish before moving on, even without await, because it's "blocking" by nature.
