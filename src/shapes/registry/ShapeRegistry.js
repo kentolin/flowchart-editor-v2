@@ -7,8 +7,13 @@
  * @module shapes/registry/ShapeRegistry
  */
 
+import { DebugLogger } from "../../utils/debug/DebugLogger.js";
+
 export class ShapeRegistry {
   constructor() {
+    this.log = DebugLogger.for(this);
+    this.log.enter("constructor");
+
     // Map of shape type -> shape class
     this.shapes = new Map();
 
@@ -20,6 +25,8 @@ export class ShapeRegistry {
 
     // Map of tag -> Set of shape types
     this.tags = new Map();
+
+    this.log.exit("constructor");
   }
 
   /**
@@ -29,21 +36,35 @@ export class ShapeRegistry {
    * @param {Object} definition - Shape definition/config
    */
   register(type, ShapeClass, definition) {
+    this.log.enter("register", { type, definition });
+
     if (this.shapes.has(type)) {
-      console.warn(`Shape type '${type}' is already registered. Overwriting.`);
+      this.log.warn(`Shape type '${type}' is already registered. Overwriting.`);
     }
 
     // Validate inputs
     if (!type || typeof type !== "string") {
-      throw new Error("Shape type must be a non-empty string");
+      this.log.error(
+        "Validation Failed: Shape type must be a non-empty string"
+      );
+      this.log.exit("register", false);
+      return false;
     }
 
     if (typeof ShapeClass !== "function") {
-      throw new Error("ShapeClass must be a constructor function");
+      this.log.error(
+        `Validation Failed: ShapeClass for '${type}' must be a constructor function`
+      );
+      this.log.exit("register", false);
+      return false;
     }
 
     if (!definition || typeof definition !== "object") {
-      throw new Error("Definition must be an object");
+      this.log.error(
+        `Validation Failed: Definition for '${type}' must be an object`
+      );
+      this.log.exit("register", false);
+      return false;
     }
 
     // Register shape class
@@ -69,6 +90,12 @@ export class ShapeRegistry {
         this.tags.get(tag).add(type);
       });
     }
+    this.log.info(`Registered shape '${type}'`, {
+      category: definition.category,
+      tags: definition.tags,
+    });
+    this.log.exit("register", true);
+    return true;
   }
 
   /**
@@ -77,7 +104,11 @@ export class ShapeRegistry {
    * @returns {boolean} - True if shape was unregistered
    */
   unregister(type) {
+    this.log.enter("unregister", { type });
+
     if (!this.shapes.has(type)) {
+      this.log.warn(`Shape type '${type}' not found, cannot unregister.`);
+      this.log.exit("unregister");
       return false;
     }
 
@@ -111,6 +142,9 @@ export class ShapeRegistry {
     this.shapes.delete(type);
     this.definitions.delete(type);
 
+    this.log.info(`Unregistered shape '${type}'`);
+    this.log.exit("unregister", true);
+
     return true;
   }
 
@@ -121,10 +155,16 @@ export class ShapeRegistry {
    * @returns {BaseShape} - Shape instance
    */
   create(type, options = {}) {
+    this.log.enter("create", { type, options });
+
     const ShapeClass = this.shapes.get(type);
 
     if (!ShapeClass) {
-      throw new Error(`Shape type '${type}' is not registered`);
+      this.log.error(
+        `Shape type '${type}' is not registered. Cannot create instance.`
+      );
+      this.log.exit("create", null);
+      return null;
     }
 
     // Get definition for default values
@@ -139,7 +179,10 @@ export class ShapeRegistry {
     };
 
     // Create and return shape instance
-    return new ShapeClass(mergedOptions);
+    const instance = new ShapeClass(mergedOptions);
+    this.log.info(`Created instance of shape '${type}'`, { instance });
+    this.log.exit("create", instance);
+    return instance;
   }
 
   /**
@@ -234,6 +277,8 @@ export class ShapeRegistry {
    * @returns {Array<Object>}
    */
   search(query) {
+    this.log.enter("search", { query });
+
     const lowerQuery = query.toLowerCase();
     const results = [];
 
@@ -272,7 +317,9 @@ export class ShapeRegistry {
     });
 
     // Sort by score (highest first)
-    return results.sort((a, b) => b.score - a.score);
+    const sortedResults = results.sort((a, b) => b.score - a.score);
+    this.log.exit("search", sortedResults);
+    return sortedResults;
   }
 
   /**
@@ -280,6 +327,8 @@ export class ShapeRegistry {
    * @returns {Object}
    */
   getStats() {
+    this.log.enter("getStats");
+
     const stats = {
       totalShapes: this.shapes.size,
       categories: {},
@@ -296,6 +345,7 @@ export class ShapeRegistry {
       stats.tags[tag] = types.size;
     });
 
+    this.log.exit("getStats", stats);
     return stats;
   }
 
@@ -305,11 +355,16 @@ export class ShapeRegistry {
    * @returns {Object} - Validation result
    */
   validate(type) {
+    this.log.enter("validate", { type });
+
     if (!this.has(type)) {
-      return {
+      const result = {
         valid: false,
         error: `Shape type '${type}' is not registered`,
       };
+      this.log.warn(result.error);
+      this.log.exit("validate", result);
+      return result;
     }
 
     const ShapeClass = this.shapes.get(type);
@@ -317,25 +372,33 @@ export class ShapeRegistry {
 
     // Check if class is a function
     if (typeof ShapeClass !== "function") {
-      return {
+      const result = {
         valid: false,
         error: `Shape class for '${type}' is not a constructor`,
       };
+      this.log.error(result.error);
+      this.log.exit("validate", result);
+      return result;
     }
 
     // Check if definition has required fields
     if (!definition.name) {
-      return {
+      const result = {
         valid: false,
         error: `Shape definition for '${type}' missing required field: name`,
       };
+      this.log.warn(result.error);
+      this.log.exit("validate", result);
+      return result;
     }
 
-    return {
+    const result = {
       valid: true,
       type,
       definition,
     };
+    this.log.exit("validate", result);
+    return result;
   }
 
   /**
@@ -354,6 +417,8 @@ export class ShapeRegistry {
    * @returns {Object}
    */
   getPaletteData() {
+    this.log.enter("getPaletteData");
+
     const palette = {};
 
     this.categories.forEach((types, category) => {
@@ -369,6 +434,7 @@ export class ShapeRegistry {
       });
     });
 
+    this.log.exit("getPaletteData", palette);
     return palette;
   }
 
@@ -376,10 +442,13 @@ export class ShapeRegistry {
    * Clear all registered shapes
    */
   clear() {
+    this.log.enter("clear");
     this.shapes.clear();
     this.definitions.clear();
     this.categories.clear();
     this.tags.clear();
+    this.log.warn("Shape registry cleared");
+    this.log.exit("clear");
   }
 
   /**
@@ -387,7 +456,8 @@ export class ShapeRegistry {
    * @returns {Object}
    */
   toJSON() {
-    return {
+    this.log.enter("toJSON");
+    const json = {
       types: this.getTypes(),
       categories: Object.fromEntries(
         Array.from(this.categories.entries()).map(([cat, types]) => [
@@ -403,5 +473,7 @@ export class ShapeRegistry {
       ),
       definitions: Object.fromEntries(this.definitions),
     };
+    this.log.exit("toJSON", json);
+    return json;
   }
 }

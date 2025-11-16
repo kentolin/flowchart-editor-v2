@@ -1,30 +1,3 @@
-/**
- * ServiceProvider.js - Service Registration & Dependency Injection Setup
- *
- * Centralized service provider that registers all application services
- * into the DI container. This separates service registration from
- * application logic.
- *
- * ⚠️ IMPORTANT: ALL IMPORTS MUST BE HERE
- * Add all class imports at the top of this file, not in ServiceContainer or main.js
- *
- * @module core/container/ServiceProvider
- * @version 1.0.0
- *
- * @example
- * import { ServiceContainer } from './ServiceContainer.js';
- * import { ServiceProvider } from './ServiceProvider.js';
- *
- * const container = new ServiceContainer();
- * ServiceProvider.register(container);
- * const eventBus = container.get('eventBus');
- */
-
-// ============================================================================
-// ALL IMPORTS - Services, Managers, Views, Controllers
-// ============================================================================
-// This is the ONLY place where imports should be!
-
 // Core Event System
 import { EventBus } from "../events/EventBus.js";
 
@@ -40,6 +13,7 @@ import { EdgeView } from "../views/EdgeView.js";
 // Shape System
 import { ShapeRegistry } from "../../shapes/registry/ShapeRegistry.js";
 import { ShapeBuilder } from "../../shapes/base/ShapeBuilder.js";
+import { ShapeLoader } from "../../shapes/loader/ShapeLoader.js";
 
 // Managers (Business Logic)
 import { NodeManager } from "../managers/NodeManager.js";
@@ -49,78 +23,62 @@ import { EdgeManager } from "../managers/EdgeManager.js";
 import { NodeController } from "../controllers/NodeController.js";
 import { EdgeController } from "../controllers/EdgeController.js";
 
-// ============================================================================
-// ServiceProvider Class
-// ============================================================================
+// Debugging & Logging
+import { DebugLogger } from "../../utils/debug/DebugLogger.js";
 
 /**
- * ServiceProvider Class
+ * ServiceProvider
  *
- * Static class for registering services with the dependency container.
- * All service registration logic centralized here.
+ * Responsible for registering all services into the ServiceContainer.
+ * Organizes services into phases to manage dependencies effectively.
  */
-class ServiceProvider {
+
+export class ServiceProvider {
   /**
-   * Register all services with the container
-   *
-   * Services are registered in dependency order:
-   * 1. Core services (no dependencies)
-   * 2. State services (depend on core)
-   * 3. Shape services (no dependencies)
-   * 4. View services (depend on shapes)
-   * 5. Managers (depend on views and core)
-   * 6. Controllers (depend on managers)
+   * Register all services into the provided ServiceContainer
    *
    * @static
-   * @param {ServiceContainer} container - Service container
-   *
-   * @throws {Error} If container is invalid
-   *
-   * @example
-   * const container = new ServiceContainer();
-   * ServiceProvider.register(container);
-   * console.log('Services registered:', container.getServiceNames());
+   * @param {ServiceContainer} container - The service container to register services into
    */
   static register(container) {
+    const log = new DebugLogger("ServiceProvider");
+
     if (!container || typeof container.register !== "function") {
-      throw new Error(
-        "ServiceProvider.register: Requires valid ServiceContainer instance"
-      );
+      const errorMsg =
+        "ServiceProvider.register: Requires valid ServiceContainer instance";
+      log.error(errorMsg);
+      throw new Error(errorMsg);
     }
 
     try {
-      console.log(
-        "%c[ServiceProvider] Starting service registration...",
-        "color: #0066cc; font-weight: bold"
-      );
+      log.stage("Starting service registration...");
 
       // ========================================================================
       // PHASE 1: CORE SERVICES
-      // These have NO dependencies
       // ========================================================================
+      log.info("Registering Phase 1: Core Services");
 
       /**
        * EventBus - Central event system
        * All components communicate through this
        */
       container.register("eventBus", () => {
-        console.log("%c  ✓ Registered: eventBus", "color: #00aa00");
+        log.info(" ✓ Instance created: eventBus");
         return new EventBus();
       });
 
       // ========================================================================
       // PHASE 2: STATE SERVICES
-      // These depend on: eventBus
       // ========================================================================
+      log.info("Registering Phase 2: State Services");
 
       /**
        * EditorState - Core state container
-       * Holds all editor state
        */
       container.register(
         "editorState",
         (c) => {
-          console.log("%c  ✓ Registered: editorState", "color: #00aa00");
+          log.info(" ✓ Instance created: editorState");
           return new EditorState(c.get("eventBus"));
         },
         { singleton: true }
@@ -128,12 +86,11 @@ class ServiceProvider {
 
       /**
        * StateManager - State coordination API
-       * High-level API for state operations
        */
       container.register(
         "stateManager",
         (c) => {
-          console.log("%c  ✓ Registered: stateManager", "color: #00aa00");
+          log.info(" ✓ Instance created: stateManager");
           return new StateManager(c.get("editorState"));
         },
         { singleton: true }
@@ -141,26 +98,24 @@ class ServiceProvider {
 
       // ========================================================================
       // PHASE 3: SHAPE SERVICES
-      // These have NO dependencies
       // ========================================================================
+      log.info("Registering Phase 3: Shape Services");
 
       /**
        * ShapeRegistry - Shape definitions and factory
-       * All available shapes registered here
        */
       container.register("shapeRegistry", () => {
-        console.log("%c  ✓ Registered: shapeRegistry", "color: #00aa00");
+        log.info(" ✓ Instance created: shapeRegistry");
         return new ShapeRegistry();
       });
 
       /**
        * ShapeBuilder - Fluent API for shape creation
-       * Depends on: shapeRegistry
        */
       container.register(
         "shapeBuilder",
         (c) => {
-          console.log("%c  ✓ Registered: shapeBuilder", "color: #00aa00");
+          log.info(" ✓ Instance created: shapeBuilder");
           return new ShapeBuilder(c.get("shapeRegistry"));
         },
         { singleton: true }
@@ -168,20 +123,16 @@ class ServiceProvider {
 
       // ========================================================================
       // PHASE 4: VIEW SERVICES
-      // These depend on: shapeBuilder
       // ========================================================================
+      log.info("Registering Phase 4: View Services");
 
       /**
        * EditorView - Main SVG canvas and viewport
-       * Root view for all rendering
        */
       container.register(
         "editor",
         (c) => {
-          console.log(
-            "%c  ✓ Registered: editor (EditorView)",
-            "color: #00aa00"
-          );
+          log.info(" ✓ Instance created: editor (EditorView)");
           return new EditorView(c);
         },
         { singleton: true }
@@ -189,12 +140,11 @@ class ServiceProvider {
 
       /**
        * NodeView - Node visual rendering
-       * Renders node shapes
        */
       container.register(
         "nodeView",
         (c) => {
-          console.log("%c  ✓ Registered: nodeView", "color: #00aa00");
+          log.info(" ✓ Instance created: nodeView");
           return new NodeView(c.get("shapeBuilder"));
         },
         { singleton: true }
@@ -202,12 +152,11 @@ class ServiceProvider {
 
       /**
        * EdgeView - Edge visual rendering
-       * Renders connections between nodes
        */
       container.register(
         "edgeView",
         () => {
-          console.log("%c  ✓ Registered: edgeView", "color: #00aa00");
+          log.info(" ✓ Instance created: edgeView");
           return new EdgeView();
         },
         { singleton: true }
@@ -215,17 +164,16 @@ class ServiceProvider {
 
       // ========================================================================
       // PHASE 5: MANAGERS
-      // These depend on: views, shapeRegistry, eventBus
       // ========================================================================
+      log.info("Registering Phase 5: Managers");
 
       /**
        * NodeManager - Node lifecycle management
-       * Manages node creation, deletion, updates
        */
       container.register(
         "nodeManager",
         (c) => {
-          console.log("%c  ✓ Registered: nodeManager", "color: #00aa00");
+          log.info(" ✓ Instance created: nodeManager");
           return new NodeManager(
             c.get("editor"),
             c.get("shapeRegistry"),
@@ -237,12 +185,11 @@ class ServiceProvider {
 
       /**
        * EdgeManager - Edge lifecycle management
-       * Manages edge creation, deletion, updates
        */
       container.register(
         "edgeManager",
         (c) => {
-          console.log("%c  ✓ Registered: edgeManager", "color: #00aa00");
+          log.info(" ✓ Instance created: edgeManager");
           return new EdgeManager(
             c.get("editor"),
             c.get("nodeManager"),
@@ -254,17 +201,16 @@ class ServiceProvider {
 
       // ========================================================================
       // PHASE 6: CONTROLLERS
-      // These depend on: managers, views, stateManager, eventBus
       // ========================================================================
+      log.info("Registering Phase 6: Controllers");
 
       /**
        * NodeController - Node interaction coordination
-       * Handles user interactions with nodes
        */
       container.register(
         "nodeController",
         (c) => {
-          console.log("%c  ✓ Registered: nodeController", "color: #00aa00");
+          log.info(" ✓ Instance created: nodeController");
           return new NodeController(
             c.get("nodeManager"),
             c.get("nodeView"),
@@ -278,12 +224,11 @@ class ServiceProvider {
 
       /**
        * EdgeController - Edge interaction coordination
-       * Handles user interactions with edges
        */
       container.register(
         "edgeController",
         (c) => {
-          console.log("%c  ✓ Registered: edgeController", "color: #00aa00");
+          log.info(" ✓ Instance created: edgeController");
           return new EdgeController(
             c.get("edgeManager"),
             c.get("edgeView"),
@@ -296,23 +241,16 @@ class ServiceProvider {
         { singleton: true }
       );
 
-      console.log(
-        "%c[ServiceProvider] ✅ All services registered successfully!",
-        "color: #00aa00; font-weight: bold"
-      );
+      log.info("✅ All services registered successfully!");
       return true;
     } catch (error) {
-      console.error(
-        "%c[ServiceProvider] ❌ Failed to register services:",
-        "color: #cc0000; font-weight: bold",
-        error
-      );
+      log.error(" ❌ Failed to register services:", error);
       throw error;
     }
   }
 
   /**
-   * Get list of all service names that should be registered
+   * Get a list of all registered service names
    *
    * @static
    * @returns {string[]} Array of service names
@@ -341,11 +279,13 @@ class ServiceProvider {
   }
 
   /**
-   * Print service dependency information
+   * Print the dependency graph of all services to the debug log
    *
    * @static
    */
   static printDependencies() {
+    const log = new DebugLogger("ServiceProvider");
+
     const dependencies = {
       eventBus: {
         dependencies: [],
@@ -410,10 +350,7 @@ class ServiceProvider {
       },
     };
 
-    console.group(
-      "%cService Provider - Dependency Graph",
-      "color: #0066cc; font-weight: bold"
-    );
+    log.group("Service Provider - Dependency Graph");
 
     for (let phase = 1; phase <= 6; phase++) {
       const services = Object.entries(dependencies).filter(
@@ -421,21 +358,16 @@ class ServiceProvider {
       );
       if (services.length === 0) continue;
 
-      console.group(`%cPhase ${phase}`, "color: #00aa00; font-weight: bold");
+      log.group(`Phase ${phase}`);
+
       services.forEach(([name, info]) => {
         const deps =
           info.dependencies.length > 0 ? info.dependencies.join(", ") : "none";
-        console.log(`  • ${name} → [${deps}]`);
+        log.info(`  • ${name} → [${deps}]`);
       });
-      console.groupEnd();
+      log.groupEnd();
     }
 
-    console.groupEnd();
+    log.groupEnd();
   }
 }
-
-// ============================================================================
-// EXPORTS
-// ============================================================================
-
-export { ServiceProvider };

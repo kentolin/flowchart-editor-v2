@@ -1,6 +1,7 @@
 import { DebugLogger, DebugControl } from "../utils/debug/DebugLogger.js";
 import { DOMUtils } from "../utils/dom/dom.js";
 import { ServiceContainer, ServiceProvider } from "../core/container/index.js";
+import { ShapeLoader } from "../shapes/loader/index.js";
 
 class FlowchartApp {
   constructor(options = {}) {
@@ -31,18 +32,27 @@ class FlowchartApp {
   }
 
   async initialize() {
-    this.log.enter("initialize");
+    this.log.enter("Initialization started");
 
     this.log.stage("Setting up service container");
     this.container = new ServiceContainer();
 
     this.log.stage("Registering services");
     ServiceProvider.register(this.container);
+    this.container.printDebugInfo();
 
     this.log.stage("Creating DOM structure");
     this.createDOMStructure();
 
-    this.log.exit("initialize");
+    this.log.stage("Getting core services");
+    this.eventBus = this.container.get("eventBus");
+    this.stateManager = this.container.get("stateManager");
+    this.shapeRegistry = this.container.get("shapeRegistry");
+
+    this.log.stage(" Loading built-in shapes");
+    ShapeLoader.loadBuiltInShapes(this.shapeRegistry);
+
+    this.log.exit("Initialization completed");
   }
 
   createDOMStructure() {

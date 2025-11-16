@@ -1,34 +1,33 @@
-/**
- * ServiceContainer.js - Dependency Injection Container
- *
- * Core dependency injection system using Singleton pattern.
- * Manages all service instances and their lifecycles.
- *
- * NO DEPENDENCIES - Foundation layer!
- *
- * @module core/container/ServiceContainer
- * @version 1.0.0
- *
- * Benefits:
- * - Centralized service management
- * - Lazy loading - services created on demand
- * - Singleton pattern - same instance everywhere
- * - Easy to test with mock implementations
- * - No circular dependencies
- *
- * @example
- * const container = new ServiceContainer();
- * container.register('eventBus', () => new EventBus());
- * const bus = container.get('eventBus');
- */
+import { DebugLogger } from "../../utils/debug/DebugLogger.js";
 
 /**
- * ServiceContainer Class
+ * Service Container for Dependency Injection
  *
- * Manages services with singleton pattern.
- * Services are created once and cached for reuse.
+ * Manages registration and retrieval of services.
+ * Supports singleton and non-singleton services.
+ * Services can depend on other services.
+ *
+ * Example usage:
+ *
+ * const container = new ServiceContainer();
+ *
+ * // Register a singleton service
+ * container.register('eventBus', () => new EventBus());
+ *
+ * // Register a service with dependencies
+ * container.register('nodeManager', (c) => {
+ *   return new NodeManager(
+ *     c.get('eventBus'),
+ *     c.get('stateManager')
+ *   );
+ * });
+ *
+ * // Get services
+ * const eventBus = container.get('eventBus');
+ * const nodeManager = container.get('nodeManager');
  */
-class ServiceContainer {
+
+export class ServiceContainer {
   /**
    * Initialize the container
    *
@@ -39,6 +38,9 @@ class ServiceContainer {
    * - registrationOrder: Track registration sequence
    */
   constructor() {
+    this.log = DebugLogger.for(this);
+    this.log.enter("constructor");
+
     // Map of service name -> factory function
     // Factory receives container as parameter for dependencies
     this.services = new Map();
@@ -53,71 +55,47 @@ class ServiceContainer {
 
     // Array to track registration order for debugging
     this.registrationOrder = [];
+
+    this.log.exit("constructor");
   }
 
   /**
    * Register a service
    *
-   * A service is anything your app needs (EventBus, StateManager, etc.)
-   * Factory function receives the container as parameter.
-   * This allows services to depend on other services.
+   * @param {string} name - Service name
+   * @param {function} factory - Factory function to create service
+   * @param {Object} [options] - Optional settings
+   * @param {boolean} [options.singleton=true] - Whether service is singleton
+   * @param {string} [options.description] - Description of the service
    *
-   * @param {string} name - Unique service identifier
-   * @param {Function} factory - Function that creates the service
-   *                              Receives container as parameter
-   *                              Should return service instance
-   * @param {Object} [options] - Optional configuration
-   * @param {boolean} [options.singleton=true] - Cache instances?
-   * @param {string} [options.description] - What this service does
-   *
-   * @returns {ServiceContainer} - Returns this for method chaining
-   *
-   * @throws {Error} If name is not string or factory is not function
+   * @returns {ServiceContainer} This container for chaining
    *
    * @example
-   * // Simple service
+   * // Register singleton service (default)
    * container.register('eventBus', () => new EventBus());
    *
-   * // Service with dependencies
-   * container.register('nodeManager', (c) => {
-   *   return new NodeManager(
-   *     c.get('eventBus'),
-   *     c.get('stateManager')
-   *   );
-   * });
-   *
-   * // With metadata
-   * container.register('editor', (c) => new Editor(), {
-   *   description: 'SVG canvas manager',
-   *   singleton: true
-   * });
-   *
-   * // Chaining
-   * container
-   *   .register('service1', () => new Service1())
-   *   .register('service2', (c) => new Service2(c.get('service1')))
-   *   .register('service3', () => new Service3());
+   * // Register non-singleton service
+   * container.register('tempData', () => new TempData(), { singleton: false });
    */
   register(name, factory, options = {}) {
+    this.log.enter("register", { name, options });
     // Validate service name
     if (typeof name !== "string" || name.trim() === "") {
-      throw new Error(
-        `ServiceContainer.register: Service name must be non-empty string, got ${typeof name}`
-      );
+      const errorMsg = `Service name must be non-empty string, got ${typeof name}`;
+      this.log.error(errorMsg);
+      throw new Error(errorMsg);
     }
 
     // Validate factory function
     if (typeof factory !== "function") {
-      throw new Error(
-        `ServiceContainer.register: Service factory for '${name}' must be a function, got ${typeof factory}`
-      );
+      const errorMsg = `Service factory for '${name}' must be a function, got ${typeof factory}`;
+      this.log.error(errorMsg);
+      throw new Error(errorMsg);
     }
 
     // Warn if re-registering
     if (this.services.has(name)) {
-      console.warn(
-        `ServiceContainer: Service '${name}' is being re-registered (overwriting)`
-      );
+      this.log.warn(`Service '${name}' is being re-registered (overwriting)`);
     }
 
     // Store the factory function
@@ -143,6 +121,11 @@ class ServiceContainer {
     // Track registration order for debugging
     this.registrationOrder.push(name);
 
+    this.log.info(`Registered service '${name}'`, {
+      singleton: shouldBeSingleton,
+    });
+    this.log.exit(`register`, this);
+
     // Return this for method chaining
     return this;
   }
@@ -150,38 +133,26 @@ class ServiceContainer {
   /**
    * Get a service instance
    *
-   * If singleton and already created: returns cached instance
-   * If singleton and not created: creates, caches, and returns it
-   * If not singleton: creates new instance each time
+   * @param {string} name - Service name to retrieve
    *
-   * @param {string} name - Service name to get
+   * @returns {any} The service instance
    *
-   * @returns {*} Service instance
-   *
-   * @throws {Error} If service is not registered
+   * @throws {Error} If service is not registered or creation fails
    *
    * @example
-   * // Get service (singleton - same instance always)
    * const eventBus = container.get('eventBus');
-   * const eventBus2 = container.get('eventBus');
-   * console.log(eventBus === eventBus2); // true
-   *
-   * // Get service for first time (creates it)
-   * const nodeManager = container.get('nodeManager');
-   * // nodeMana ger is created, cached, and returned
-   *
-   * // Get service second time (returns cached)
-   * const nodeManager2 = container.get('nodeManager');
-   * // Returns same cached instance
    */
   get(name) {
+    this.log.enter("get", { name });
+
     // Check if service is registered
     if (!this.has(name)) {
       const available = this.getServiceNames().join(", ");
-      throw new Error(
-        `ServiceContainer: Service '${name}' is not registered.\n` +
-          `Available services: ${available || "none"}`
-      );
+      const errorMsg = `Service '${name}' is not registered. \nAvailable services: ${
+        available || "none"
+      }`;
+      this.log.error(errorMsg);
+      throw new Error(`ServiceContainer: ${errorMsg}`);
     }
 
     // If this is a singleton and already created, return cached
@@ -189,6 +160,8 @@ class ServiceContainer {
       const cached = this.singletons.get(name);
       if (cached !== null) {
         // Already created and cached
+        this.log.debug(`Returning cached singleton for service '${name}'`);
+        this.log.exit("get", cached);
         return cached;
       }
       // null means not created yet, so create it below
@@ -201,18 +174,25 @@ class ServiceContainer {
     // Pass 'this' so service can use other services
     let instance;
     try {
+      this.log.debug(`Creating new instance for service '${name}'`);
       instance = factory(this);
     } catch (error) {
-      throw new Error(
-        `ServiceContainer: Failed to create service '${name}':\n${error.message}`
-      );
+      const errorMsg = `Failed to create service '${name}': \n${error.message}`;
+      this.log.error(errorMsg);
+      throw new Error(`ServiceContainer: ${errorMsg}`);
     }
 
     // If this is a singleton, cache it
     if (this.singletons.has(name)) {
+      this.log.debug(`Caching singleton instance for service '${name}'`);
       this.singletons.set(name, instance);
+    } else {
+      this.log.debug(
+        `Returning new non-singleton instance for service '${name}'`
+      );
     }
 
+    this.log.exit("get", instance);
     return instance;
   }
 
@@ -221,11 +201,11 @@ class ServiceContainer {
    *
    * @param {string} name - Service name to check
    *
-   * @returns {boolean} True if service exists
+   * @returns {boolean} True if registered, false otherwise
    *
    * @example
    * if (container.has('eventBus')) {
-   *   const bus = container.get('eventBus');
+   *   const eventBus = container.get('eventBus');
    * }
    */
   has(name) {
@@ -235,12 +215,11 @@ class ServiceContainer {
   /**
    * Get all registered service names
    *
-   * @returns {string[]} Array of service names in registration order
+   * @returns {string[]} Array of registered service names
    *
    * @example
    * const services = container.getServiceNames();
    * console.log('Registered services:', services);
-   * // ['eventBus', 'stateManager', 'nodeManager', 'editor']
    */
   getServiceNames() {
     // Return in registration order
@@ -248,20 +227,21 @@ class ServiceContainer {
   }
 
   /**
-   * Remove a service from the container
-   *
-   * Removes the service definition and cached instance.
-   * Service will no longer be available.
+   * Remove a registered service
    *
    * @param {string} name - Service name to remove
    *
    * @returns {boolean} True if removed, false if not found
    *
    * @example
-   * container.remove('testService');
+   * const removed = container.remove('tempData');
+   * console.log('Service removed:', removed);
    */
   remove(name) {
+    this.log.enter("remove", { name });
     if (!this.has(name)) {
+      this.log.warn(`Service '${name}' not found, cannot remove`);
+      this.log.exit("remove", false);
       return false;
     }
 
@@ -274,58 +254,53 @@ class ServiceContainer {
     if (index > -1) {
       this.registrationOrder.splice(index, 1);
     }
+    this.log.info(`Removed service '${name}'`);
+    this.log.exit("remove", true);
 
     return true;
   }
 
   /**
-   * Clear all services from the container
+   * Clear all registered services
    *
-   * Removes all registered services and cached instances.
-   * Useful for testing or resetting the application.
+   * Empties the container of all services, singletons, and metadata.
    *
    * @example
    * container.clear();
-   * console.log(container.getServiceNames()); // []
    */
   clear() {
+    this.log.enter("clear");
     this.services.clear();
     this.singletons.clear();
     this.metadata.clear();
     this.registrationOrder = [];
+    this.log.warn("Service container cleared");
+    this.log.exit("clear");
   }
 
   /**
    * Create a child container
    *
-   * Child inherits all services from parent but can override them.
-   * Useful for scoped services or testing.
+   * Child container inherits all services from parent.
+   * Child can register its own services independently.
    *
    * @returns {ServiceContainer} New child container
    *
    * @example
-   * const parent = new ServiceContainer();
-   * parent.register('db', () => new RealDatabase());
-   *
-   * // Production
-   * const prodDb = parent.get('db'); // Real database
-   *
-   * // Testing
-   * const child = parent.createChild();
-   * child.register('db', () => new MockDatabase());
-   * const testDb = child.get('db'); // Mock database
-   *
-   * // Parent is unchanged
-   * const prodDb2 = parent.get('db'); // Still real database
+   * const childContainer = parentContainer.createChild();
+   * childContainer.register('childService', () => new ChildService());
    */
   createChild() {
+    this.log.enter("createChild");
     const child = new ServiceContainer();
 
     // Copy all service factories from parent
     for (const [name, factory] of this.services) {
       child.services.set(name, factory);
       // Don't copy cached instances - child gets fresh instances
-      child.singletons.set(name, null);
+      if (child.singletons.has(name) || this.singletons.has(name)) {
+        child.singletons.set(name, null);
+      }
     }
 
     // Copy metadata
@@ -336,24 +311,19 @@ class ServiceContainer {
     // Copy registration order
     child.registrationOrder = [...this.registrationOrder];
 
+    this.log.info("Created child container", { services: child.services.size });
+    this.log.exit("createChild", child);
     return child;
   }
 
   /**
-   * Get all singletons that have been created
+   * Get all active singleton instances
    *
-   * Shows which services are currently in memory.
-   * Useful for debugging and monitoring.
-   *
-   * @returns {Object} Object with service name -> instance pairs
+   * @returns {Object} Map of service name -> instance for active singletons
    *
    * @example
-   * const active = container.getActiveSingletons();
-   * console.log('Services in memory:', Object.keys(active));
-   * // ['eventBus', 'stateManager']
-   *
-   * // Not in memory yet:
-   * // ['nodeManager', 'edgeManager', 'editor']
+   * const activeSingletons = container.getActiveSingletons();
+   * console.log(activeSingletons);
    */
   getActiveSingletons() {
     const active = {};
@@ -370,28 +340,18 @@ class ServiceContainer {
   /**
    * Get debug information about the container
    *
-   * Shows registered services, loaded services, and metadata.
-   * Useful for understanding container state.
-   *
-   * @returns {Object} Debug information
+   * @returns {Object} Debug info including total services, loaded singletons, etc.
    *
    * @example
-   * const info = container.debugInfo();
-   * console.log(info);
-   * // {
-   * //   totalServices: 5,
-   * //   loadedSingletons: 2,
-   * //   services: ['eventBus', 'stateManager', ...],
-   * //   loaded: ['eventBus', 'stateManager'],
-   * //   notLoaded: ['nodeManager', 'edgeManager', 'editor'],
-   * //   metadata: { ... }
-   * // }
+   * const debugInfo = container.debugInfo();
+   * console.log(debugInfo);
    */
   debugInfo() {
+    this.log.enter("debugInfo");
     const activeSingletons = this.getActiveSingletons();
     const allServices = this.getServiceNames();
 
-    return {
+    const info = {
       totalServices: this.services.size,
       loadedSingletons: Object.keys(activeSingletons).length,
       services: allServices,
@@ -401,50 +361,35 @@ class ServiceContainer {
       ),
       metadata: Object.fromEntries(this.metadata),
     };
+    this.log.exit("debugInfo", info);
+    return info;
   }
 
   /**
-   * Print debug information in human-readable format
-   *
-   * Shows all services and their status in console.
-   * Great for debugging container state.
-   *
+   * Print debug information to console
    * @example
    * container.printDebugInfo();
-   *
-   * Output:
-   * ========== ServiceContainer Debug Info ==========
-   * Total Services: 5
-   * Loaded Singletons: 2
-   *
-   * Registered Services:
-   *   1. eventBus
-   *   2. stateManager
-   *   3. nodeManager
-   *   4. edgeManager
-   *   5. editor
-   *
-   * Loaded (in memory): eventBus, stateManager
-   * Not Loaded Yet: nodeManager, edgeManager, editor
-   * ==================================================
    */
   printDebugInfo() {
+    this.log.enter("printDebugInfo");
     const info = this.debugInfo();
 
-    console.log("========== ServiceContainer Debug Info ==========");
-    console.log(`Total Services: ${info.totalServices}`);
-    console.log(`Loaded Singletons: ${info.loadedSingletons}`);
-    console.log("");
-    console.log("Registered Services:");
+    this.log.group("========== ServiceContainer Debug Info ==========");
+    this.log.info(`Total Services: ${info.totalServices}`);
+    this.log.info(`Loaded Singletons: ${info.loadedSingletons}`);
+
+    this.log.group("Registered Services (in order):");
     info.services.forEach((name, index) => {
-      console.log(`  ${index + 1}. ${name}`);
+      this.log.info(`  ${index + 1}. ${name}`);
     });
-    console.log("");
-    console.log(`Loaded (in memory): ${info.loaded.join(", ") || "none"}`);
-    console.log(`Not Loaded Yet: ${info.notLoaded.join(", ") || "all loaded"}`);
-    console.log("=".repeat(50));
+    this.log.groupEnd();
+    this.log.info("=".repeat(50));
+    this.log.info(`Loaded (in memory): ${info.loaded.join(", ") || "none"}`);
+    this.log.info(
+      `Not Loaded Yet: ${info.notLoaded.join(", ") || "all loaded"}`
+    );
+    this.log.info("=".repeat(50));
+    this.log.groupEnd();
+    this.log.exit("printDebugInfo");
   }
 }
-
-// Export for use in other modules
-export { ServiceContainer };
