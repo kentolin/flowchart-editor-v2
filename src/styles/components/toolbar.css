@@ -3,14 +3,16 @@
  */
 
 .tool-bar {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  padding: var(--spacing-sm) var(--spacing-md);
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
   height: var(--toolbar-height);
-  box-shadow: var(--shadow-sm);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+  position: relative;
   z-index: var(--z-toolbar);
 }
 
@@ -20,55 +22,63 @@
   align-items: center;
 }
 
+.tool-group-center {
+  display: flex;
+  gap: var(--spacing-xs);
+  align-items: center;
+  flex: 1; /* Take up remaining space */
+}
+
 .tool-btn {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  padding: var(--spacing-sm);
-  min-width: 36px;
-  height: 36px;
-  cursor: pointer;
-  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
   transition: all var(--transition-fast);
-  color: var(--text-primary);
+  cursor: pointer;
+  padding: 0;
+}
+
+.tool-icon {
+  width: 16px;
+  height: 16px;
+  stroke: var(--text-secondary, #555);
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: stroke 0.15s ease;
 }
 
 .tool-btn:hover {
   background: var(--surface-hover);
-  border-color: var(--primary-color);
 }
 
-.tool-btn:active {
-  transform: scale(0.95);
+.tool-btn:hover .tool-icon {
+  stroke: var(--primary-color, #0078d7);
 }
 
-.tool-btn.active {
-  background: var(--primary-color);
-  color: var(--primary-contrast);
-  border-color: var(--primary-color);
-}
-
-.tool-btn:disabled {
-  opacity: 0.5;
+.tool-btn:disabled,
+.tool-btn.disabled {
+  opacity: 0.4;
   cursor: not-allowed;
+  pointer-events: none;
 }
 
-.tool-btn span {
-  font-size: 1.125rem;
-  line-height: 1;
+.tool-btn:disabled .tool-icon,
+.tool-btn.disabled .tool-icon {
+  stroke: var(--text-disabled, #999);
 }
 
-.tool-divider {
+.tool-group:not(:last-child)::after {
+  content: "";
   width: 1px;
-  height: 24px;
-  background: var(--border);
-  margin: 0 var(--spacing-sm);
-}
-
-.tool-label {
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
-  margin-left: var(--spacing-xs);
+  height: 18px;
+  background: #ccc;
+  opacity: 0.5;
+  margin-left: 3px;
 }

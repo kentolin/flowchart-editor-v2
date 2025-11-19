@@ -3,49 +3,36 @@
  */
 
 .menu-bar {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  padding: 0 var(--spacing-md);
   display: flex;
   align-items: center;
-  height: var(--header-height);
-  box-shadow: var(--shadow-sm);
+  height: var(--header-height, 40px);
+  padding: 0 var(--spacing-md);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  user-select: none;
+  position: relative;
   z-index: var(--z-menu);
 }
 
-.menu-items {
-  display: flex;
-  gap: var(--spacing-xs);
-  align-items: center;
-}
-
 .menu-item {
-  background: none;
-  border: none;
-  padding: var(--spacing-sm) var(--spacing-md);
-  cursor: pointer;
-  font-size: var(--font-size-sm);
-  color: var(--text-primary);
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 var(--spacing-md);
   border-radius: var(--radius-sm);
+  cursor: default;
   transition: background var(--transition-fast);
-  font-weight: var(--font-weight-medium);
 }
 
 .menu-item:hover {
   background: var(--surface-hover);
 }
 
-.menu-item:active {
-  background: var(--border-light);
-}
-
-.menu-item.active {
-  color: var(--primary-color);
-  background: var(--primary-color) 10;
-}
-
-/* Menu dropdown (future) */
 .menu-dropdown {
+  display: none;
   position: absolute;
   top: 100%;
   left: 0;
@@ -54,27 +41,98 @@
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
   min-width: 200px;
-  padding: var(--spacing-xs) 0;
-  display: none;
-  z-index: var(--z-menu);
+  flex-direction: column;
+  font-size: var(--font-size-sm);
+  animation: dropdown-fade var(--transition-fast);
+  z-index: var(--z-menu, 300);
 }
 
-.menu-dropdown.open {
-  display: block;
+.menu-item.open > .menu-dropdown {
+  display: flex;
 }
 
-.menu-dropdown-item {
-  padding: var(--spacing-sm) var(--spacing-md);
+.menu-dropdown > div {
+  padding: var(--spacing-xs) var(--spacing-md);
+  white-space: nowrap;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  color: var(--text-primary);
   cursor: pointer;
-  transition: background var(--transition-fast);
 }
 
-.menu-dropdown-item:hover {
-  background: var(--surface-hover);
+.menu-dropdown > div:hover {
+  background: var(--primary-color);
+  color: var(--primary-contrast);
 }
 
-.menu-dropdown-divider {
-  height: 1px;
-  background: var(--border);
+.menu-separator {
+  border-top: 1px solid var(--border);
   margin: var(--spacing-xs) 0;
+  cursor: default !important;
+  padding: 0 !important;
+  height: 1px;
+}
+
+.menu-separator:hover {
+  background: transparent !important;
+}
+
+.menu-shortcut {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  margin-left: var(--spacing-xl);
+  opacity: 0.7;
+}
+
+.submenu {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.submenu::after {
+  content: "▶";
+  right: var(--spacing-lg);
+  opacity: 0.6;
+  font-size: 10px;
+}
+
+.submenu-dropdown {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  min-width: 200px;
+  flex-direction: column;
+  z-index: var(--z-menu, 300);
+}
+
+.submenu:hover > .submenu-dropdown {
+  display: flex;
+}
+
+.menu-dropdown > div.checked::before {
+  content: "✓";
+  margin-right: var(--spacing-sm);
+}
+
+.menu-dropdown > div[disabled],
+.menu-dropdown > div.disabled {
+  opacity: 0.5;
+  cursor: not-allowed !important;
+  pointer-events: none;
+}
+
+@keyframes dropdown-fade {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

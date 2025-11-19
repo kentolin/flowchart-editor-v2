@@ -1,0 +1,18 @@
+<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <!-- Letter T -->
+  <line x1="4" y1="6" x2="20" y2="6" 
+        stroke="#000000" 
+        stroke-width="2" 
+        stroke-linecap="round"/>
+  
+  <line x1="12" y1="6" x2="12" y2="20" 
+        stroke="#000000" 
+        stroke-width="2" 
+        stroke-linecap="round"/>
+  
+  <!-- Bottom serif -->
+  <line x1="9" y1="20" x2="15" y2="20" 
+        stroke="#000000" 
+        stroke-width="2" 
+        stroke-linecap="round"/>
+</svg>

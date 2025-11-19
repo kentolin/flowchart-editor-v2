@@ -12,8 +12,7 @@ import { EdgeView } from "../views/EdgeView.js";
 
 // Shape System
 import { ShapeRegistry } from "../../shapes/registry/ShapeRegistry.js";
-import { ShapeBuilder } from "../../shapes/base/ShapeBuilder.js";
-import { ShapeLoader } from "../../shapes/loader/ShapeLoader.js";
+import { ShapeBuilder } from "../../shapes/builder/ShapeBuilder.js";
 
 // Managers (Business Logic)
 import { NodeManager } from "../managers/NodeManager.js";
@@ -63,8 +62,9 @@ export class ServiceProvider {
        * All components communicate through this
        */
       container.register("eventBus", () => {
-        log.info(" ✓ Instance created: eventBus");
-        return new EventBus();
+        const eventBus = new EventBus();
+        log.info(" ✓ Instance of EventBus created.");
+        return eventBus;
       });
 
       // ========================================================================
@@ -78,8 +78,9 @@ export class ServiceProvider {
       container.register(
         "editorState",
         (c) => {
-          log.info(" ✓ Instance created: editorState");
-          return new EditorState(c.get("eventBus"));
+          const editorState = new EditorState(c.get("eventBus"));
+          log.info(" ✓ Instance of EditorState created.");
+          return editorState;
         },
         { singleton: true }
       );
@@ -90,8 +91,9 @@ export class ServiceProvider {
       container.register(
         "stateManager",
         (c) => {
-          log.info(" ✓ Instance created: stateManager");
-          return new StateManager(c.get("editorState"));
+          const stateManager = new StateManager(c.get("editorState"));
+          log.info(" ✓ Instance of StateManager created.");
+          return stateManager;
         },
         { singleton: true }
       );
@@ -104,19 +106,25 @@ export class ServiceProvider {
       /**
        * ShapeRegistry - Shape definitions and factory
        */
-      container.register("shapeRegistry", () => {
-        log.info(" ✓ Instance created: shapeRegistry");
-        return new ShapeRegistry();
-      });
+      container.register(
+        "shapeRegistry",
+        () => {
+          const shapeRegistry = new ShapeRegistry();
+          log.info(" ✓ Instance of ShapeRegistry created.");
+          return shapeRegistry;
+        },
+        { singleton: true }
+      );
 
       /**
-       * ShapeBuilder - Fluent API for shape creation
+       * ShapeBuilder - Shape instance factory
        */
       container.register(
         "shapeBuilder",
         (c) => {
-          log.info(" ✓ Instance created: shapeBuilder");
-          return new ShapeBuilder(c.get("shapeRegistry"));
+          const shapeBuilder = new ShapeBuilder(c.get("shapeRegistry"));
+          log.info(" ✓ Instance of ShapeBuilder created.");
+          return shapeBuilder;
         },
         { singleton: true }
       );
@@ -132,8 +140,9 @@ export class ServiceProvider {
       container.register(
         "editor",
         (c) => {
-          log.info(" ✓ Instance created: editor (EditorView)");
-          return new EditorView(c);
+          const editor = new EditorView(c);
+          log.info(" ✓ Instance created: editor");
+          return editor;
         },
         { singleton: true }
       );
@@ -144,8 +153,9 @@ export class ServiceProvider {
       container.register(
         "nodeView",
         (c) => {
+          const nodeView = new NodeView(c.get("shapeBuilder"));
           log.info(" ✓ Instance created: nodeView");
-          return new NodeView(c.get("shapeBuilder"));
+          return nodeView;
         },
         { singleton: true }
       );
@@ -156,8 +166,9 @@ export class ServiceProvider {
       container.register(
         "edgeView",
         () => {
+          const edgeView = new EdgeView();
           log.info(" ✓ Instance created: edgeView");
-          return new EdgeView();
+          return edgeView;
         },
         { singleton: true }
       );
@@ -173,12 +184,13 @@ export class ServiceProvider {
       container.register(
         "nodeManager",
         (c) => {
-          log.info(" ✓ Instance created: nodeManager");
-          return new NodeManager(
+          const nodeManager = new NodeManager(
             c.get("editor"),
             c.get("shapeRegistry"),
             c.get("eventBus")
           );
+          log.info(" ✓ Instance created: nodeManager");
+          return nodeManager;
         },
         { singleton: true }
       );
@@ -189,12 +201,13 @@ export class ServiceProvider {
       container.register(
         "edgeManager",
         (c) => {
-          log.info(" ✓ Instance created: edgeManager");
-          return new EdgeManager(
+          const edgeManager = new EdgeManager(
             c.get("editor"),
             c.get("nodeManager"),
             c.get("eventBus")
           );
+          log.info(" ✓ Instance created: edgeManager");
+          return edgeManager;
         },
         { singleton: true }
       );
@@ -210,14 +223,15 @@ export class ServiceProvider {
       container.register(
         "nodeController",
         (c) => {
-          log.info(" ✓ Instance created: nodeController");
-          return new NodeController(
+          const nodeController = new NodeController(
             c.get("nodeManager"),
             c.get("nodeView"),
             c.get("editor"),
             c.get("stateManager"),
             c.get("eventBus")
           );
+          log.info(" ✓ Instance created: nodeController");
+          return nodeController;
         },
         { singleton: true }
       );
@@ -228,8 +242,7 @@ export class ServiceProvider {
       container.register(
         "edgeController",
         (c) => {
-          log.info(" ✓ Instance created: edgeController");
-          return new EdgeController(
+          const edgeController = new EdgeController(
             c.get("edgeManager"),
             c.get("edgeView"),
             c.get("nodeManager"),
@@ -237,6 +250,8 @@ export class ServiceProvider {
             c.get("stateManager"),
             c.get("eventBus")
           );
+          log.info(" ✓ Instance created: edgeController");
+          return edgeController;
         },
         { singleton: true }
       );

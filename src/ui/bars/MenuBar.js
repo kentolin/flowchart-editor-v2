@@ -2,24 +2,80 @@
  * MenuBar.js - Application menu bar
  */
 
+import { DebugLogger } from "../../utils/debug/DebugLogger.js";
+
 export class MenuBar {
   constructor(eventBus, stateManager) {
+    this.log = DebugLogger.for(this);
+    this.log.enter("constructor");
+
     this.eventBus = eventBus;
     this.stateManager = stateManager;
     this.container = null;
     this.menus = [];
+
+    this.log.exit("constructor");
   }
 
+  /**
+   * Initialize and render menu bar
+   * @param {HTMLElement} containerElement - The container to render into
+   */
   initialize(containerElement) {
+    this.log.enter("initialize");
+
+    if (!containerElement) {
+      this.log.error("Container element is required");
+      return;
+    }
+
     this.container = containerElement;
     this.render();
+    this._setupEventListeners();
+
+    this.log.exit("initialize");
   }
 
+  /**
+   * Render menu bar into the container
+   */
   render() {
-    this.container.innerHTML = "";
-    this.container.className = "flowchart-menubar";
+    this.log.enter("render");
 
-    const menus = [
+    if (!this.container) {
+      this.log.error("Container not initialized. Call initialize() first.");
+      return;
+    }
+
+    // Clear existing content
+    this.container.innerHTML = "";
+    this.container.className = "menu-bar";
+
+    // Define menu structure
+    const menus = this._getMenuDefinitions();
+
+    // Build menus
+    this.log.stage(`Building ${menus.length} menus`);
+    menus.forEach((menu) => {
+      const menuEl = this._createMenu(menu);
+      this.container.appendChild(menuEl);
+      this.menus.push({
+        label: menu.label,
+        element: menuEl,
+        items: menu.items,
+      });
+    });
+
+    this.log.exit("render", `Created ${this.menus.length} menus`);
+  }
+
+  /**
+   * Get menu definitions
+   * @private
+   * @returns {Array} Menu definitions
+   */
+  _getMenuDefinitions() {
+    return [
       {
         label: "File",
         items: [
@@ -28,9 +84,15 @@ export class MenuBar {
           { id: "save", label: "Save", shortcut: "Ctrl+S" },
           { id: "save-as", label: "Save As...", shortcut: "Ctrl+Shift+S" },
           { type: "separator" },
-          { id: "export-png", label: "Export as PNG..." },
-          { id: "export-svg", label: "Export as SVG..." },
-          { id: "export-pdf", label: "Export as PDF..." },
+          {
+            label: "Export",
+            submenu: [
+              { id: "export-json", label: "Export as JSON" },
+              { id: "export-svg", label: "Export as SVG" },
+              { id: "export-png", label: "Export as PNG" },
+              { id: "export-pdf", label: "Export as PDF" },
+            ],
+          },
           { type: "separator" },
           { id: "print", label: "Print...", shortcut: "Ctrl+P" },
         ],
@@ -48,6 +110,22 @@ export class MenuBar {
           { type: "separator" },
           { id: "select-all", label: "Select All", shortcut: "Ctrl+A" },
           { id: "delete", label: "Delete", shortcut: "Del" },
+          { type: "separator" },
+          {
+            label: "Preferences",
+            submenu: [
+              {
+                label: "Theme",
+                submenu: [
+                  { id: "theme-light", label: "Light" },
+                  { id: "theme-dark", label: "Dark" },
+                  { id: "theme-auto", label: "Auto" },
+                ],
+              },
+              { type: "separator" },
+              { id: "settings", label: "Settings..." },
+            ],
+          },
         ],
       },
       {
@@ -77,6 +155,15 @@ export class MenuBar {
             checked: false,
           },
           { type: "separator" },
+          {
+            label: "Panels",
+            submenu: [
+              { id: "toggle-minimap", label: "Mini Map" },
+              { id: "toggle-action-log", label: "Action Log" },
+              { id: "toggle-layers", label: "Layers Panel" },
+            ],
+          },
+          { type: "separator" },
           { id: "fullscreen", label: "Full Screen", shortcut: "F11" },
         ],
       },
@@ -95,23 +182,50 @@ export class MenuBar {
         label: "Arrange",
         items: [
           {
-            id: "bring-front",
-            label: "Bring to Front",
-            shortcut: "Ctrl+Shift+]",
+            label: "Order",
+            submenu: [
+              {
+                id: "bring-front",
+                label: "Bring to Front",
+                shortcut: "Ctrl+Shift+]",
+              },
+              {
+                id: "bring-forward",
+                label: "Bring Forward",
+                shortcut: "Ctrl+]",
+              },
+              {
+                id: "send-backward",
+                label: "Send Backward",
+                shortcut: "Ctrl+[",
+              },
+              {
+                id: "send-back",
+                label: "Send to Back",
+                shortcut: "Ctrl+Shift+[",
+              },
+            ],
           },
-          { id: "bring-forward", label: "Bring Forward", shortcut: "Ctrl+]" },
-          { id: "send-backward", label: "Send Backward", shortcut: "Ctrl+[" },
-          { id: "send-back", label: "Send to Back", shortcut: "Ctrl+Shift+[" },
           { type: "separator" },
-          { id: "align-left", label: "Align Left" },
-          { id: "align-center", label: "Align Center" },
-          { id: "align-right", label: "Align Right" },
-          { id: "align-top", label: "Align Top" },
-          { id: "align-middle", label: "Align Middle" },
-          { id: "align-bottom", label: "Align Bottom" },
-          { type: "separator" },
-          { id: "distribute-h", label: "Distribute Horizontally" },
-          { id: "distribute-v", label: "Distribute Vertically" },
+          {
+            label: "Align",
+            submenu: [
+              { id: "align-left", label: "Align Left" },
+              { id: "align-center", label: "Align Center" },
+              { id: "align-right", label: "Align Right" },
+              { type: "separator" },
+              { id: "align-top", label: "Align Top" },
+              { id: "align-middle", label: "Align Middle" },
+              { id: "align-bottom", label: "Align Bottom" },
+            ],
+          },
+          {
+            label: "Distribute",
+            submenu: [
+              { id: "distribute-h", label: "Distribute Horizontally" },
+              { id: "distribute-v", label: "Distribute Vertically" },
+            ],
+          },
           { type: "separator" },
           { id: "group", label: "Group", shortcut: "Ctrl+G" },
           { id: "ungroup", label: "Ungroup", shortcut: "Ctrl+Shift+G" },
@@ -127,165 +241,203 @@ export class MenuBar {
         ],
       },
     ];
-
-    menus.forEach((menu) => {
-      const menuEl = this._createMenu(menu);
-      this.container.appendChild(menuEl);
-      this.menus.push({
-        label: menu.label,
-        element: menuEl,
-        items: menu.items,
-      });
-    });
-
-    this._setupEventListeners();
   }
 
+  /**
+   * Create a menu element
+   * @private
+   * @param {Object} menu - Menu configuration
+   * @returns {HTMLElement} Menu element
+   */
   _createMenu(menu) {
+    this.log.stage(`Creating menu: ${menu.label}`);
+
     const menuEl = document.createElement("div");
-    menuEl.className = "menu";
+    menuEl.className = "menu-item";
+    menuEl.dataset.menu = menu.label.toLowerCase();
+    menuEl.textContent = menu.label;
 
-    const trigger = document.createElement("button");
-    trigger.className = "menu-trigger";
-    trigger.textContent = menu.label;
-    menuEl.appendChild(trigger);
+    // Build dropdown recursively
+    const dropdown = this._buildDropdown(menu.items);
+    menuEl.appendChild(dropdown);
 
-    const dropdown = document.createElement("div");
-    dropdown.className = "menu-dropdown";
+    // ADD TOUCH SUPPORT
+    let touchHandled = false;
 
-    menu.items.forEach((item) => {
-      if (item.type === "separator") {
-        const sep = document.createElement("div");
-        sep.className = "menu-separator";
-        dropdown.appendChild(sep);
-      } else {
-        const itemEl = this._createMenuItem(item);
-        dropdown.appendChild(itemEl);
+    menuEl.addEventListener(
+      "touchstart",
+      (e) => {
+        e.preventDefault();
+        touchHandled = true;
+        this._closeAllMenus();
+        menuEl.classList.add("open");
+      },
+      { passive: false }
+    );
+
+    // Mouse events for opening/closing
+    menuEl.addEventListener("mouseenter", () => {
+      if (!touchHandled) {
+        this._closeAllMenus();
+        menuEl.classList.add("open");
+      }
+      touchHandled = false; // reset for next interaction
+    });
+
+    menuEl.addEventListener("mouseleave", () => {
+      if (!touchHandled) {
+        menuEl.classList.remove("open");
       }
     });
 
-    menuEl.appendChild(dropdown);
-
-    trigger.addEventListener("click", (e) => {
-      e.stopPropagation();
-      this._toggleMenu(menuEl);
-    });
-
+    this.log.stage(`Created menu: ${menu.label}`);
     return menuEl;
   }
 
-  _createMenuItem(item) {
-    const itemEl = document.createElement("button");
-    itemEl.className = "menu-item";
-    itemEl.dataset.action = item.id;
+  /**
+   * Build dropdown menu recursively
+   * @private
+   * @param {Array} items - Menu items
+   * @returns {HTMLElement} Dropdown element
+   */
+  _buildDropdown(items = []) {
+    const container = document.createElement("div");
+    container.className = "menu-dropdown";
 
-    const label = document.createElement("span");
-    label.className = "menu-item-label";
-    label.textContent = item.label;
-    itemEl.appendChild(label);
-
-    if (item.shortcut) {
-      const shortcut = document.createElement("span");
-      shortcut.className = "menu-item-shortcut";
-      shortcut.textContent = item.shortcut;
-      itemEl.appendChild(shortcut);
-    }
-
-    if (item.type === "checkbox") {
-      itemEl.classList.add("menu-item-checkbox");
-      if (item.checked) {
-        itemEl.classList.add("checked");
+    items.forEach((item) => {
+      // Handle separator
+      if (item.type === "separator") {
+        const sep = document.createElement("div");
+        sep.className = "menu-separator";
+        sep.setAttribute("role", "separator");
+        container.appendChild(sep);
+        return;
       }
-    }
 
-    itemEl.addEventListener("click", () => {
-      if (item.type === "checkbox") {
-        itemEl.classList.toggle("checked");
-        const checked = itemEl.classList.contains("checked");
-        this.eventBus.emit("menu:action", { action: item.id, checked });
-      } else {
-        this.eventBus.emit("menu:action", { action: item.id });
+      // Create menu item element
+      const el = document.createElement("div");
+      el.style.display = "flex";
+      el.style.justifyContent = "space-between";
+      el.style.alignItems = "center";
+      el.textContent = item.label;
+
+      if (item.id) {
+        el.dataset.action = item.id;
       }
-      this._closeAllMenus();
+
+      if (item.shortcut) {
+        const shortcut = document.createElement("span");
+        shortcut.className = "menu-shortcut";
+        shortcut.textContent = item.shortcut;
+        el.appendChild(shortcut);
+      }
+
+      // Handle submenu (recursive)
+      if (item.submenu) {
+        el.className = "submenu";
+        const sub = this._buildDropdown(item.submenu);
+        sub.classList.add("submenu-dropdown");
+        el.appendChild(sub);
+
+        // ADD TOUCH SUPPORT FOR SUBMENUS
+        let submenuTouchHandled = false;
+
+        el.addEventListener(
+          "touchstart",
+          (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            submenuTouchHandled = true;
+            // Toggle submenu
+            const isOpen = sub.style.display === "flex";
+            sub.style.display = isOpen ? "none" : "flex";
+            if (!isOpen) {
+              this._adjustSubmenuPosition(sub);
+            }
+          },
+          { passive: false }
+        );
+
+        //Adjust position if near right edge
+        el.addEventListener("mouseenter", () => {
+          if (!submenuTouchHandled) {
+            this._adjustSubmenuPosition(sub);
+          }
+          submenuTouchHandled = false; // reset for next interaction
+        });
+      }
+
+      // Handle action/click
+      else {
+        //ADD BOTH CLICK and TOUCH EVENTS
+
+        const handleAction = (e) => {
+          e.stopPropagation();
+          this._closeAllMenus();
+
+          this.log.stage(`Menu action: ${item.id || item.label}`);
+
+          // Handle checkbox items
+          if (item.type === "checkbox") {
+            item.checked = !item.checked;
+            el.classList.toggle("checked", item.checked);
+
+            const checkmark = el.querySelector(".menu-checkmark");
+            if (checkmark) {
+              checkmark.textContent = item.checked ? "✓" : "";
+            }
+
+            this.eventBus.emit("menu:action", {
+              action: item.id,
+              checked: item.checked,
+            });
+          } else {
+            this.eventBus.emit("menu:action", { action: item.id });
+          }
+        };
+        el.addEventListener("click", handleAction);
+        el.addEventListener("touchend", handleAction, { passive: false });
+      }
+      container.appendChild(el);
     });
-
-    return itemEl;
+    return container;
   }
+  /**
+   * Adjust submenu position to prevent overflow
+   * @private
+   * @param {HTMLElement} submenu - Submenu element
+   */
+  _adjustSubmenuPosition(submenu) {
+    const rect = submenu.getBoundingClientRect();
+    const vw = window.innerWidth;
 
-  _toggleMenu(menuEl) {
-    const isOpen = menuEl.classList.contains("open");
-    this._closeAllMenus();
-    if (!isOpen) {
-      menuEl.classList.add("open");
+    if (rect.right > vw - 10) {
+      submenu.style.left = "auto";
+      submenu.style.right = "100%";
     }
   }
 
+  /**
+   * Close all open menus
+   * @private
+   */
   _closeAllMenus() {
-    this.container.querySelectorAll(".menu.open").forEach((menu) => {
+    this.container?.querySelectorAll(".menu-item.open").forEach((menu) => {
       menu.classList.remove("open");
     });
   }
-
+  /**   * Setup event listeners
+   * @private
+   */
   _setupEventListeners() {
-    document.addEventListener("click", () => {
+    this.log.enter("_setupEventListeners");
+
+    // Only keep document click handler
+    this._documentClickHandler = () => {
       this._closeAllMenus();
-    });
+    };
+    document.addEventListener("click", this._documentClickHandler);
 
-    this.eventBus.on("history:changed", ({ canUndo, canRedo }) => {
-      this._setMenuItemEnabled("undo", canUndo);
-      this._setMenuItemEnabled("redo", canRedo);
-    });
-
-    this.eventBus.on("selection:changed", ({ nodes, edges }) => {
-      const hasSelection = nodes.length > 0 || edges.length > 0;
-      this._setMenuItemEnabled("cut", hasSelection);
-      this._setMenuItemEnabled("copy", hasSelection);
-      this._setMenuItemEnabled("duplicate", hasSelection);
-      this._setMenuItemEnabled("delete", hasSelection);
-      this._setMenuItemEnabled("bring-front", hasSelection);
-      this._setMenuItemEnabled("bring-forward", hasSelection);
-      this._setMenuItemEnabled("send-backward", hasSelection);
-      this._setMenuItemEnabled("send-back", hasSelection);
-
-      const multipleSelected = nodes.length > 1;
-      this._setMenuItemEnabled("align-left", multipleSelected);
-      this._setMenuItemEnabled("align-center", multipleSelected);
-      this._setMenuItemEnabled("align-right", multipleSelected);
-      this._setMenuItemEnabled("align-top", multipleSelected);
-      this._setMenuItemEnabled("align-middle", multipleSelected);
-      this._setMenuItemEnabled("align-bottom", multipleSelected);
-      this._setMenuItemEnabled("distribute-h", multipleSelected);
-      this._setMenuItemEnabled("distribute-v", multipleSelected);
-      this._setMenuItemEnabled("group", multipleSelected);
-    });
-  }
-
-  _setMenuItemEnabled(action, enabled) {
-    const item = this.container.querySelector(`[data-action="${action}"]`);
-    if (item) {
-      item.disabled = !enabled;
-      item.classList.toggle("disabled", !enabled);
-    }
-  }
-
-  addMenuItem(menuLabel, item, position) {
-    const menu = this.menus.find((m) => m.label === menuLabel);
-    if (menu) {
-      const dropdown = menu.element.querySelector(".menu-dropdown");
-      const itemEl = this._createMenuItem(item);
-      if (position !== undefined) {
-        const children = Array.from(dropdown.children);
-        dropdown.insertBefore(itemEl, children[position]);
-      } else {
-        dropdown.appendChild(itemEl);
-      }
-    }
-  }
-
-  destroy() {
-    this.menus = [];
-    if (this.container) {
-      this.container.innerHTML = "";
-    }
+    this.log.exit("_setupEventListeners", "Event listeners attached");
   }
 }

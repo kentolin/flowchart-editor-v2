@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>README.md</title>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+
+<style>
+/* https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+body {
+	font-family: var(--vscode-markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif);
+	font-size: var(--vscode-markdown-font-size, 14px);
+	padding: 0 26px;
+	line-height: var(--vscode-markdown-line-height, 22px);
+	word-wrap: break-word;
+}
+
+#code-csp-warning {
+	position: fixed;
+	top: 0;
+	right: 0;
+	color: white;
+	margin: 16px;
+	text-align: center;
+	font-size: 12px;
+	font-family: sans-serif;
+	background-color:#444444;
+	cursor: pointer;
+	padding: 6px;
+	box-shadow: 1px 1px 1px rgba(0,0,0,.25);
+}
+
+#code-csp-warning:hover {
+	text-decoration: none;
+	background-color:#007acc;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.25);
+}
+
+body.scrollBeyondLastLine {
+	margin-bottom: calc(100vh - 22px);
+}
+
+body.showEditorSelection .code-line {
+	position: relative;
+}
+
+body.showEditorSelection .code-active-line:before,
+body.showEditorSelection .code-line:hover:before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0;
+	left: -12px;
+	height: 100%;
+}
+
+body.showEditorSelection li.code-active-line:before,
+body.showEditorSelection li.code-line:hover:before {
+	left: -30px;
+}
+
+.vscode-light.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.vscode-light.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.40);
+}
+
+.vscode-light.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-dark.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.vscode-dark.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.60);
+}
+
+.vscode-dark.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-high-contrast.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 160, 0, 0.7);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 160, 0, 1);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 1px solid -webkit-focus-ring-color;
+	outline-offset: -1px;
+}
+
+hr {
+	border: 0;
+	height: 2px;
+	border-bottom: 2px solid;
+}
+
+h1 {
+	padding-bottom: 0.3em;
+	line-height: 1.2;
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+}
+
+h1, h2, h3 {
+	font-weight: normal;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table > thead > tr > th {
+	text-align: left;
+	border-bottom: 1px solid;
+}
+
+table > thead > tr > th,
+table > thead > tr > td,
+table > tbody > tr > th,
+table > tbody > tr > td {
+	padding: 5px 10px;
+}
+
+table > tbody > tr + tr > td {
+	border-top: 1px solid;
+}
+
+blockquote {
+	margin: 0 7px 0 5px;
+	padding: 0 16px 0 10px;
+	border-left-width: 5px;
+	border-left-style: solid;
+}
+
+code {
+	font-family: Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace, "Droid Sans Fallback";
+	font-size: 1em;
+	line-height: 1.357em;
+}
+
+body.wordWrap pre {
+	white-space: pre-wrap;
+}
+
+pre:not(.hljs),
+pre.hljs code > div {
+	padding: 16px;
+	border-radius: 3px;
+	overflow: auto;
+}
+
+pre code {
+	color: var(--vscode-editor-foreground);
+	tab-size: 4;
+}
+
+/** Theming */
+
+.vscode-light pre {
+	background-color: rgba(220, 220, 220, 0.4);
+}
+
+.vscode-dark pre {
+	background-color: rgba(10, 10, 10, 0.4);
+}
+
+.vscode-high-contrast pre {
+	background-color: rgb(0, 0, 0);
+}
+
+.vscode-high-contrast h1 {
+	border-color: rgb(0, 0, 0);
+}
+
+.vscode-light table > thead > tr > th {
+	border-color: rgba(0, 0, 0, 0.69);
+}
+
+.vscode-dark table > thead > tr > th {
+	border-color: rgba(255, 255, 255, 0.69);
+}
+
+.vscode-light h1,
+.vscode-light hr,
+.vscode-light table > tbody > tr + tr > td {
+	border-color: rgba(0, 0, 0, 0.18);
+}
+
+.vscode-dark h1,
+.vscode-dark hr,
+.vscode-dark table > tbody > tr + tr > td {
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+</style>
+
+<style>
+/* Tomorrow Theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+
+/* Tomorrow Comment */
+.hljs-comment,
+.hljs-quote {
+	color: #8e908c;
+}
+
+/* Tomorrow Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+	color: #c82829;
+}
+
+/* Tomorrow Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+	color: #f5871f;
+}
+
+/* Tomorrow Yellow */
+.hljs-attribute {
+	color: #eab700;
+}
+
+/* Tomorrow Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+	color: #718c00;
+}
+
+/* Tomorrow Blue */
+.hljs-title,
+.hljs-section {
+	color: #4271ae;
+}
+
+/* Tomorrow Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #8959a8;
+}
+
+.hljs {
+	display: block;
+	overflow-x: auto;
+	color: #4d4d4c;
+	padding: 0.5em;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}
+</style>
+
+<style>
+/*
+ * Markdown PDF CSS
+ */
+
+ body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "Meiryo";
+	padding: 0 12px;
+}
+
+pre {
+	background-color: #f8f8f8;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+pre:not(.hljs) {
+	padding: 23px;
+	line-height: 19px;
+}
+
+blockquote {
+	background: rgba(127, 127, 127, 0.1);
+	border-color: rgba(0, 122, 204, 0.5);
+}
+
+.emoji {
+	height: 1.4em;
+}
+
+code {
+	font-size: 14px;
+	line-height: 19px;
+}
+
+/* for inline code */
+:not(pre):not(.hljs) > code {
+	color: #C9AE75; /* Change the old color so it seems less like an error */
+	font-size: inherit;
+}
+
+/* Page Break : use <div class="page"/> to insert page break
+-------------------------------------------------------- */
+.page {
+	page-break-after: always;
+}
+
+</style>
+
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+          ? 'dark'
+          : 'default'
+    });
+  </script>
+<h1 id="flowchart-editor-v2---complete-architecture-documentation">Flowchart Editor v2 - Complete Architecture Documentation</h1>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#overview">Overview</a></li>
+<li><a href="#layer-architecture">Layer Architecture</a></li>
+<li><a href="#core-components">Core Components</a></li>
+<li><a href="#data-flow">Data Flow</a></li>
+<li><a href="#design-patterns">Design Patterns</a></li>
+<li><a href="#getting-started">Getting Started</a></li>
+<li><a href="#api-reference">API Reference</a></li>
+<li><a href="#extending-the-system">Extending the System</a></li>
+</ol>
+<hr>
+<h2 id="overview">Overview</h2>
+<p>The Flowchart Editor is built using a <strong>layered, modular architecture</strong> that separates concerns across multiple independent layers:</p>
+<pre class="hljs"><code><div>┌──────────────────────────────────────┐
+│    UI Layer (Panels, Dialogs, Bars)  │
+├──────────────────────────────────────┤
+│    Manager Layer (Business Logic)    │
+├──────────────────────────────────────┤
+│   MVC Layer (Models, Views, Control) │
+├──────────────────────────────────────┤
+│   Core Services (Editor, State, Bus) │
+├──────────────────────────────────────┤
+│  DI Layer (ServiceContainer)         │
+└──────────────────────────────────────┘
+</div></code></pre>
+<h3 id="key-principles">Key Principles</h3>
+<ul>
+<li><strong>Separation of Concerns</strong>: Each layer has a single responsibility</li>
+<li><strong>Dependency Injection</strong>: All services are managed by ServiceContainer</li>
+<li><strong>Event-Driven</strong>: Components communicate via EventBus</li>
+<li><strong>Immutability</strong>: State updates are explicit and traceable</li>
+<li><strong>Modularity</strong>: Each component is independently testable</li>
+</ul>
+<hr>
+<h2 id="layer-architecture">Layer Architecture</h2>
+<h3 id="layer-1-dependency-injection">Layer 1: Dependency Injection</h3>
+<p><strong>Location</strong>: <code>src/core/container/</code></p>
+<p>Manages all service instances using the <strong>Singleton pattern</strong>.</p>
+<p><strong>Key Classes</strong>:</p>
+<ul>
+<li><code>ServiceContainer</code>: Stores and retrieves services</li>
+<li><code>ServiceProvider</code>: Bootstraps all services</li>
+</ul>
+<p><strong>Usage</strong>:</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">import</span> { ServiceContainer } <span class="hljs-keyword">from</span> <span class="hljs-string">"./core/container/ServiceContainer.js"</span>;
+
+<span class="hljs-keyword">const</span> container = <span class="hljs-keyword">new</span> ServiceContainer();
+container.register(<span class="hljs-string">"eventBus"</span>, () =&gt; <span class="hljs-keyword">new</span> EventBus(), <span class="hljs-literal">true</span>);
+<span class="hljs-keyword">const</span> eventBus = container.get(<span class="hljs-string">"eventBus"</span>);
+</div></code></pre>
+<h3 id="layer-2-event-system">Layer 2: Event System</h3>
+<p><strong>Location</strong>: <code>src/core/events/</code></p>
+<p>Implements <strong>Pub/Sub pattern</strong> for component communication.</p>
+<p><strong>Key Classes</strong>:</p>
+<ul>
+<li><code>EventBus</code>: Manages event subscriptions and emissions</li>
+</ul>
+<p><strong>Common Events</strong>:</p>
+<pre class="hljs"><code><div><span class="hljs-comment">// Node events</span>
+<span class="hljs-string">"node:created"</span>; <span class="hljs-comment">// New node created</span>
+<span class="hljs-string">"node:deleted"</span>; <span class="hljs-comment">// Node deleted</span>
+<span class="hljs-string">"node:selected"</span>; <span class="hljs-comment">// Node selected</span>
+<span class="hljs-string">"node:updated"</span>; <span class="hljs-comment">// Node properties changed</span>
+<span class="hljs-string">"node:dragStart"</span>; <span class="hljs-comment">// Node drag started</span>
+<span class="hljs-string">"node:dragging"</span>; <span class="hljs-comment">// Node being dragged</span>
+<span class="hljs-string">"node:dragEnd"</span>; <span class="hljs-comment">// Node drag ended</span>
+
+<span class="hljs-comment">// Edge events</span>
+<span class="hljs-string">"edge:created"</span>; <span class="hljs-comment">// New edge created</span>
+<span class="hljs-string">"edge:deleted"</span>; <span class="hljs-comment">// Edge deleted</span>
+<span class="hljs-string">"edge:selected"</span>; <span class="hljs-comment">// Edge selected</span>
+<span class="hljs-string">"edge:updated"</span>; <span class="hljs-comment">// Edge properties changed</span>
+
+<span class="hljs-comment">// Canvas events</span>
+<span class="hljs-string">"canvas:clicked"</span>; <span class="hljs-comment">// Canvas clicked</span>
+<span class="hljs-string">"shape:dropped"</span>; <span class="hljs-comment">// Shape dropped on canvas</span>
+<span class="hljs-string">"viewport:changed"</span>; <span class="hljs-comment">// Zoom/pan changed</span>
+</div></code></pre>
+<h3 id="layer-3-state-management">Layer 3: State Management</h3>
+<p><strong>Location</strong>: <code>src/core/state/</code></p>
+<p>Centralized state store with immutable updates.</p>
+<p><strong>Key Classes</strong>:</p>
+<ul>
+<li><code>EditorState</code>: Data store</li>
+<li><code>StateManager</code>: State mutations</li>
+</ul>
+<p><strong>State Structure</strong>:</p>
+<pre class="hljs"><code><div>{
+  <span class="hljs-attr">nodes</span>: <span class="hljs-built_in">Map</span>&lt;nodeId, NodeModel&gt;,
+  <span class="hljs-attr">edges</span>: <span class="hljs-built_in">Map</span>&lt;edgeId, EdgeModel&gt;,
+  <span class="hljs-attr">selection</span>: {
+    <span class="hljs-attr">nodes</span>: <span class="hljs-built_in">Set</span>&lt;nodeId&gt;,
+    <span class="hljs-attr">edges</span>: <span class="hljs-built_in">Set</span>&lt;edgeId&gt;
+  },
+  <span class="hljs-attr">viewport</span>: { x, y, zoom },
+  <span class="hljs-attr">mode</span>: <span class="hljs-string">'select'</span> | <span class="hljs-string">'draw'</span> | <span class="hljs-string">'connect'</span> | <span class="hljs-string">'edit'</span>,
+  <span class="hljs-attr">tool</span>: shapeType,
+  <span class="hljs-attr">clipboard</span>: { data, type },
+  <span class="hljs-attr">history</span>: { undoStack, redoStack },
+  <span class="hljs-attr">theme</span>: <span class="hljs-string">'light'</span> | <span class="hljs-string">'dark'</span>,
+  <span class="hljs-attr">grid</span>: { enabled, size, visible }
+}
+</div></code></pre>
+<h3 id="layer-4-core-services">Layer 4: Core Services</h3>
+<p><strong>Location</strong>: <code>src/core/</code></p>
+<p>Core services for rendering and state management.</p>
+<p><strong>Key Classes</strong>:</p>
+<ul>
+<li><code>Editor</code>: SVG canvas management</li>
+<li><code>ShapeRegistry</code>: Shape definitions</li>
+</ul>
+<h3 id="layer-5-mvc-pattern">Layer 5: MVC Pattern</h3>
+<p><strong>Location</strong>: <code>src/core/models/</code>, <code>src/core/views/</code>, <code>src/core/controllers/</code></p>
+<p>Separates data, presentation, and interaction logic.</p>
+<p><strong>Models</strong> (<code>src/core/models/</code>):</p>
+<ul>
+<li><code>NodeModel</code>: Node data structure</li>
+<li><code>EdgeModel</code>: Edge data structure</li>
+</ul>
+<p><strong>Views</strong> (<code>src/core/views/</code>):</p>
+<ul>
+<li><code>NodeView</code>: SVG rendering for nodes</li>
+<li><code>EdgeView</code>: SVG rendering for edges</li>
+</ul>
+<p><strong>Controllers</strong> (<code>src/core/controllers/</code>):</p>
+<ul>
+<li><code>NodeController</code>: Node interaction handling</li>
+<li><code>EdgeController</code>: Edge interaction handling</li>
+</ul>
+<h3 id="layer-6-managers">Layer 6: Managers</h3>
+<p><strong>Location</strong>: <code>src/core/managers/</code></p>
+<p>Business logic layer handling CRUD and domain operations.</p>
+<p><strong>Key Managers</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Manager</th>
+<th>Responsibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>NodeManager</code></td>
+<td>Node creation, deletion, updates, alignment</td>
+</tr>
+<tr>
+<td><code>EdgeManager</code></td>
+<td>Edge creation, deletion, routing</td>
+</tr>
+<tr>
+<td><code>SelectionManager</code></td>
+<td>Selection state management</td>
+</tr>
+<tr>
+<td><code>HistoryManager</code></td>
+<td>Undo/Redo stack</td>
+</tr>
+<tr>
+<td><code>ClipboardManager</code></td>
+<td>Copy/Paste/Cut operations</td>
+</tr>
+<tr>
+<td><code>SnapManager</code></td>
+<td>Grid snapping</td>
+</tr>
+<tr>
+<td><code>ValidationManager</code></td>
+<td>Connection/node validation</td>
+</tr>
+<tr>
+<td><code>ThemeManager</code></td>
+<td>Theme management</td>
+</tr>
+<tr>
+<td><code>ExportManager</code></td>
+<td>Import/Export (JSON, SVG, PNG)</td>
+</tr>
+<tr>
+<td><code>PluginManager</code></td>
+<td>Plugin registration and execution</td>
+</tr>
+<tr>
+<td><code>LayerManager</code></td>
+<td>Layer organization</td>
+</tr>
+</tbody>
+</table>
+<h3 id="layer-7-shape-system">Layer 7: Shape System</h3>
+<p><strong>Location</strong>: <code>src/shapes/</code></p>
+<p>Defines and manages shape types.</p>
+<p><strong>Key Classes</strong>:</p>
+<ul>
+<li><code>BaseShape</code>: Abstract shape definition</li>
+<li><code>ShapeRegistry</code>: Shape registry</li>
+<li><code>ShapeBuilder</code>: Fluent API for shape creation</li>
+<li><code>ShapeLoader</code>: Loads built-in shapes</li>
+</ul>
+<p><strong>Creating a Custom Shape</strong>:</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">const</span> customShape = <span class="hljs-keyword">new</span> ShapeBuilder(<span class="hljs-string">"myShape"</span>)
+  .displayName(<span class="hljs-string">"My Custom Shape"</span>)
+  .category(<span class="hljs-string">"custom"</span>)
+  .size(<span class="hljs-number">100</span>, <span class="hljs-number">100</span>)
+  .style({ <span class="hljs-attr">fill</span>: <span class="hljs-string">"#FF0000"</span>, <span class="hljs-attr">stroke</span>: <span class="hljs-string">"#000000"</span> })
+  .build();
+
+registry.register(customShape);
+</div></code></pre>
+<h3 id="layer-8-ui-components">Layer 8: UI Components</h3>
+<p><strong>Location</strong>: <code>src/ui/</code></p>
+<p>User interface components.</p>
+<p><strong>Panels</strong>:</p>
+<ul>
+<li><code>LeftPalette</code>: Shape library</li>
+<li><code>RightInspector</code>: Property editor</li>
+<li><code>LayersPanel</code>: Layer management</li>
+<li><code>MiniMap</code>: Canvas overview</li>
+</ul>
+<p><strong>Bars</strong>:</p>
+<ul>
+<li><code>MenuBar</code>: File, Edit, View menus</li>
+<li><code>ToolBar</code>: Quick tools</li>
+<li><code>StatusBar</code>: Status information</li>
+</ul>
+<p><strong>Dialogs</strong>:</p>
+<ul>
+<li><code>ExportDialog</code>: Export options</li>
+<li><code>ShapePickerDialog</code>: Shape selection</li>
+<li><code>ColorPickerDialog</code>: Color selection</li>
+</ul>
+<hr>
+<h2 id="core-components">Core Components</h2>
+<h3 id="servicecontainer">ServiceContainer</h3>
+<p>Manages service lifecycle and dependencies.</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">const</span> container = <span class="hljs-keyword">new</span> ServiceContainer();
+
+<span class="hljs-comment">// Register a service</span>
+container.register(<span class="hljs-string">"myService"</span>, () =&gt; <span class="hljs-keyword">new</span> MyService(), <span class="hljs-literal">true</span>);
+
+<span class="hljs-comment">// Get a service</span>
+<span class="hljs-keyword">const</span> service = container.get(<span class="hljs-string">"myService"</span>);
+
+<span class="hljs-comment">// Check if service exists</span>
+<span class="hljs-keyword">if</span> (container.has(<span class="hljs-string">"myService"</span>)) {
+  <span class="hljs-comment">// ...</span>
+}
+</div></code></pre>
+<h3 id="eventbus">EventBus</h3>
+<p>Enables component communication.</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">const</span> eventBus = <span class="hljs-keyword">new</span> EventBus();
+
+<span class="hljs-comment">// Subscribe to event</span>
+eventBus.on(<span class="hljs-string">"node:created"</span>, (node) =&gt; {
+  <span class="hljs-built_in">console</span>.log(<span class="hljs-string">"Node created:"</span>, node);
+});
+
+<span class="hljs-comment">// One-time subscription</span>
+eventBus.once(<span class="hljs-string">"sync:complete"</span>, () =&gt; {
+  <span class="hljs-built_in">console</span>.log(<span class="hljs-string">"Sync complete"</span>);
+});
+
+<span class="hljs-comment">// Emit event</span>
+eventBus.emit(<span class="hljs-string">"node:created"</span>, { <span class="hljs-attr">id</span>: <span class="hljs-string">"node_1"</span>, <span class="hljs-attr">type</span>: <span class="hljs-string">"rect"</span> });
+
+<span class="hljs-comment">// Unsubscribe</span>
+eventBus.off(<span class="hljs-string">"node:created"</span>, handler);
+</div></code></pre>
+<h3 id="editor">Editor</h3>
+<p>Main SVG canvas manager.</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">const</span> editor = <span class="hljs-keyword">new</span> Editor(eventBus, stateManager);
+editor.initialize(svgElement);
+
+<span class="hljs-comment">// Set viewport (zoom/pan)</span>
+editor.setViewport({ <span class="hljs-attr">x</span>: <span class="hljs-number">0</span>, <span class="hljs-attr">y</span>: <span class="hljs-number">0</span>, <span class="hljs-attr">zoom</span>: <span class="hljs-number">1</span> });
+
+<span class="hljs-comment">// Add elements</span>
+editor.addNodeElement(nodeId, svgElement);
+editor.addEdgeElement(edgeId, svgElement);
+
+<span class="hljs-comment">// Export</span>
+<span class="hljs-keyword">const</span> svgString = editor.exportSVG();
+<span class="hljs-keyword">const</span> imageUrl = <span class="hljs-keyword">await</span> editor.exportImage(<span class="hljs-string">"png"</span>);
+
+<span class="hljs-comment">// Fit to view</span>
+editor.fitToView(padding);
+</div></code></pre>
+<h3 id="statemanager">StateManager</h3>
+<p>State mutations and queries.</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">const</span> stateManager = <span class="hljs-keyword">new</span> StateManager(editorState);
+
+<span class="hljs-comment">// Get current state</span>
+<span class="hljs-keyword">const</span> state = stateManager.getState();
+
+<span class="hljs-comment">// Update state</span>
+stateManager.setMode(<span class="hljs-string">"draw"</span>);
+stateManager.setTool(<span class="hljs-string">"rect"</span>);
+stateManager.setViewport({ <span class="hljs-attr">zoom</span>: <span class="hljs-number">2</span> });
+stateManager.setTheme(<span class="hljs-string">"dark"</span>);
+
+<span class="hljs-comment">// Grid settings</span>
+stateManager.setGrid(<span class="hljs-literal">true</span>, <span class="hljs-number">20</span>, <span class="hljs-literal">false</span>);
+</div></code></pre>
+<hr>
+<h2 id="data-flow">Data Flow</h2>
+<h3 id="flow-1-creating-a-node">Flow 1: Creating a Node</h3>
+<pre class="hljs"><code><div>User clicks &quot;Rectangle&quot; in palette
+    ↓
+LeftPalette emits 'shape:selected'
+    ↓
+main.js receives event → StateManager.setMode('draw')
+    ↓
+User clicks on canvas
+    ↓
+Canvas emits 'canvas:clicked'
+    ↓
+main.js calls NodeManager.createNode()
+    ↓
+NodeManager:
+  • Creates NodeModel
+  • Creates NodeView
+  • Creates NodeController
+  • Adds to state
+  • Renders to canvas
+    ↓
+Emits 'node:created'
+    ↓
+UI updates:
+  • LayersPanel adds layer
+  • MiniMap updates
+  • StatusBar shows message
+</div></code></pre>
+<h3 id="flow-2-connecting-nodes">Flow 2: Connecting Nodes</h3>
+<pre class="hljs"><code><div>User clicks on source node's port
+    ↓
+NodeController emits 'port:mouseDown'
+    ↓
+main.js enters 'connect' mode
+    ↓
+User clicks on target node's port
+    ↓
+main.js calls EdgeManager.createEdge()
+    ↓
+EdgeManager:
+  • Validates connection
+  • Creates EdgeModel
+  • Creates EdgeView
+  • Renders to canvas
+    ↓
+Emits 'edge:created'
+    ↓
+UI updates
+</div></code></pre>
+<h3 id="flow-3-selecting-and-moving">Flow 3: Selecting and Moving</h3>
+<pre class="hljs"><code><div>User clicks on node
+    ↓
+NodeView emits click event
+    ↓
+main.js calls SelectionManager.selectNode()
+    ↓
+StateManager updates selection state
+    ↓
+RightInspector displays node properties
+    ↓
+User drags node
+    ↓
+NodeController handles mousemove
+    ↓
+Updates model position
+    ↓
+Emits 'node:dragging'
+    ↓
+MiniMap updates viewport indicator
+</div></code></pre>
+<hr>
+<h2 id="design-patterns">Design Patterns</h2>
+<h3 id="1-singleton-pattern">1. Singleton Pattern</h3>
+<p><strong>Used in</strong>: <code>ServiceContainer</code>, Managers</p>
+<p>Services are created once and reused throughout the application.</p>
+<pre class="hljs"><code><div>container.register(<span class="hljs-string">'nodeManager'</span>, () =&gt; <span class="hljs-keyword">new</span> NodeManager(...), <span class="hljs-literal">true</span>);
+<span class="hljs-comment">// 'true' means singleton - same instance every time</span>
+</div></code></pre>
+<h3 id="2-factory-pattern">2. Factory Pattern</h3>
+<p><strong>Used in</strong>: <code>ServiceProvider</code>, <code>ShapeBuilder</code></p>
+<p>Creates services and objects with consistent interfaces.</p>
+<pre class="hljs"><code><div><span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">ServiceProvider</span> </span>{
+  <span class="hljs-keyword">static</span> register(container) {
+    container.register(<span class="hljs-string">'editor'</span>, (c) =&gt; <span class="hljs-keyword">new</span> Editor(...));
+  }
+}
+</div></code></pre>
+<h3 id="3-registry-pattern">3. Registry Pattern</h3>
+<p><strong>Used in</strong>: <code>ShapeRegistry</code></p>
+<p>Stores and manages collection of objects.</p>
+<pre class="hljs"><code><div>registry.register(shape);
+<span class="hljs-keyword">const</span> shape = registry.getShape(<span class="hljs-string">"rect"</span>);
+<span class="hljs-keyword">const</span> allRectShapes = registry.getCategory(<span class="hljs-string">"basic"</span>);
+</div></code></pre>
+<h3 id="4-observer-pattern-pubsub">4. Observer Pattern (Pub/Sub)</h3>
+<p><strong>Used in</strong>: <code>EventBus</code></p>
+<p>Components observe events and react without tight coupling.</p>
+<pre class="hljs"><code><div>eventBus.on(<span class="hljs-string">"node:created"</span>, (node) =&gt; {
+  <span class="hljs-comment">// React to node creation</span>
+});
+</div></code></pre>
+<h3 id="5-mvc-pattern">5. MVC Pattern</h3>
+<p><strong>Used in</strong>: Nodes and Edges</p>
+<p>Model stores data, View renders it, Controller handles interaction.</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">const</span> model = <span class="hljs-keyword">new</span> NodeModel(data);
+<span class="hljs-keyword">const</span> view = <span class="hljs-keyword">new</span> NodeView(model, shape);
+<span class="hljs-keyword">const</span> controller = <span class="hljs-keyword">new</span> NodeController(model, view);
+</div></code></pre>
+<h3 id="6-command-pattern">6. Command Pattern</h3>
+<p><strong>Used in</strong>: <code>HistoryManager</code></p>
+<p>Encapsulates actions as objects for undo/redo.</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">const</span> command = <span class="hljs-keyword">new</span> CreateNodeCommand(nodeManager, data);
+historyManager.execute(command); <span class="hljs-comment">// Can undo later</span>
+</div></code></pre>
+<h3 id="7-strategy-pattern">7. Strategy Pattern</h3>
+<p><strong>Used in</strong>: Shape rendering, Edge routing</p>
+<p>Different algorithms for different scenarios.</p>
+<pre class="hljs"><code><div><span class="hljs-comment">// Different edge routing strategies</span>
+<span class="hljs-keyword">const</span> edgeView = <span class="hljs-keyword">new</span> EdgeView(model); <span class="hljs-comment">// Can render straight, bezier, orthogonal</span>
+edgeManager.changeEdgeType(edgeId, <span class="hljs-string">"bezier"</span>);
+</div></code></pre>
+<h3 id="8-builder-pattern">8. Builder Pattern</h3>
+<p><strong>Used in</strong>: <code>ShapeBuilder</code></p>
+<p>Fluent API for complex object creation.</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">const</span> shape = <span class="hljs-keyword">new</span> ShapeBuilder(<span class="hljs-string">"rect"</span>)
+  .displayName(<span class="hljs-string">"Rectangle"</span>)
+  .size(<span class="hljs-number">120</span>, <span class="hljs-number">60</span>)
+  .style({ <span class="hljs-attr">fill</span>: <span class="hljs-string">"#fff"</span> })
+  .build();
+</div></code></pre>
+<h3 id="9-facade-pattern">9. Facade Pattern</h3>
+<p><strong>Used in</strong>: Managers</p>
+<p>Simplified interface to complex subsystems.</p>
+<pre class="hljs"><code><div><span class="hljs-comment">// NodeManager simplifies access to models, views, controllers</span>
+nodeManager.createNode(type, x, y);
+nodeManager.alignNodes(<span class="hljs-string">"left"</span>);
+</div></code></pre>
+<h3 id="10-dependency-injection">10. Dependency Injection</h3>
+<p><strong>Used in</strong>: <code>ServiceContainer</code></p>
+<p>Decouples components by injecting dependencies.</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">const</span> nodeManager = <span class="hljs-keyword">new</span> NodeManager(editor, stateManager, eventBus, ...);
+<span class="hljs-comment">// Dependencies are passed in, not created internally</span>
+</div></code></pre>
+<hr>
+<h2 id="getting-started">Getting Started</h2>
+<h3 id="1-basic-setup">1. Basic Setup</h3>
+<pre class="hljs"><code><div><span class="hljs-keyword">import</span> { FlowchartApp } <span class="hljs-keyword">from</span> <span class="hljs-string">"./app/main.js"</span>;
+
+<span class="hljs-comment">// Initialize the app</span>
+<span class="hljs-keyword">const</span> app = <span class="hljs-keyword">new</span> FlowchartApp();
+<span class="hljs-keyword">await</span> app.initialize();
+
+<span class="hljs-comment">// Access managers</span>
+<span class="hljs-keyword">const</span> nodeManager = app.getManager(<span class="hljs-string">"node"</span>);
+<span class="hljs-keyword">const</span> edgeManager = app.getManager(<span class="hljs-string">"edge"</span>);
+<span class="hljs-keyword">const</span> stateManager = app.getStateManager();
+</div></code></pre>
+<h3 id="2-creating-shapes">2. Creating Shapes</h3>
+<pre class="hljs"><code><div><span class="hljs-comment">// Create a rectangle</span>
+<span class="hljs-keyword">const</span> node = nodeManager.createNode(<span class="hljs-string">"rect"</span>, <span class="hljs-number">100</span>, <span class="hljs-number">100</span>, {
+  <span class="hljs-attr">label</span>: <span class="hljs-string">"Process"</span>,
+  <span class="hljs-attr">style</span>: { <span class="hljs-attr">fill</span>: <span class="hljs-string">"#90EE90"</span> },
+});
+
+<span class="hljs-comment">// Create a decision diamond</span>
+<span class="hljs-keyword">const</span> decision = nodeManager.createNode(<span class="hljs-string">"decision"</span>, <span class="hljs-number">300</span>, <span class="hljs-number">100</span>, {
+  <span class="hljs-attr">label</span>: <span class="hljs-string">"Decision?"</span>,
+});
+</div></code></pre>
+<h3 id="3-creating-connections">3. Creating Connections</h3>
+<pre class="hljs"><code><div><span class="hljs-comment">// Connect two nodes</span>
+<span class="hljs-keyword">const</span> edge = edgeManager.createEdge(node.id, decision.id, {
+  <span class="hljs-attr">label</span>: <span class="hljs-string">"Yes"</span>,
+  <span class="hljs-attr">type</span>: <span class="hljs-string">"straight"</span>, <span class="hljs-comment">// or 'bezier', 'orthogonal'</span>
+});
+</div></code></pre>
+<h3 id="4-handling-events">4. Handling Events</h3>
+<pre class="hljs"><code><div><span class="hljs-keyword">const</span> eventBus = app.getService(<span class="hljs-string">"eventBus"</span>);
+
+eventBus.on(<span class="hljs-string">"node:created"</span>, (node) =&gt; {
+  <span class="hljs-built_in">console</span>.log(<span class="hljs-string">`Node created: <span class="hljs-subst">${node.id}</span>`</span>);
+});
+
+eventBus.on(<span class="hljs-string">"edge:created"</span>, (edge) =&gt; {
+  <span class="hljs-built_in">console</span>.log(<span class="hljs-string">`Edge created: <span class="hljs-subst">${edge.id}</span>`</span>);
+});
+
+eventBus.on(<span class="hljs-string">"selection:changed"</span>, (selection) =&gt; {
+  <span class="hljs-built_in">console</span>.log(<span class="hljs-string">`Selected: <span class="hljs-subst">${selection.nodes.size}</span> nodes`</span>);
+});
+</div></code></pre>
+<h3 id="5-exportimport">5. Export/Import</h3>
+<pre class="hljs"><code><div><span class="hljs-comment">// Export diagram as JSON</span>
+<span class="hljs-keyword">const</span> jsonString = exportManager.exportAsJSON();
+
+<span class="hljs-comment">// Export as SVG</span>
+<span class="hljs-keyword">const</span> svgString = exportManager.exportAsSVG();
+
+<span class="hljs-comment">// Import from JSON</span>
+exportManager.importFromJSON(jsonString);
+</div></code></pre>
+<hr>
+<h2 id="api-reference">API Reference</h2>
+<h3 id="nodemanager">NodeManager</h3>
+<pre class="hljs"><code><div><span class="hljs-comment">// Create node</span>
+nodeManager.createNode(type, x, y, options);
+
+<span class="hljs-comment">// Get node</span>
+nodeManager.getNode(nodeId);
+nodeManager.getAllNodes();
+
+<span class="hljs-comment">// Update node</span>
+nodeManager.updateNode(nodeId, updates);
+
+<span class="hljs-comment">// Remove node</span>
+nodeManager.removeNode(nodeId);
+nodeManager.removeNodes([nodeId1, nodeId2]);
+
+<span class="hljs-comment">// Query</span>
+nodeManager.getNodeAt(x, y);
+nodeManager.getNodesInArea(x, y, width, height);
+
+<span class="hljs-comment">// Operations</span>
+nodeManager.duplicateNode(nodeId, offsetX, offsetY);
+nodeManager.alignNodes(alignment); <span class="hljs-comment">// 'left', 'right', 'top', 'bottom', 'centerH', 'centerV'</span>
+nodeManager.distributeNodes(direction); <span class="hljs-comment">// 'horizontal', 'vertical'</span>
+</div></code></pre>
+<h3 id="edgemanager">EdgeManager</h3>
+<pre class="hljs"><code><div><span class="hljs-comment">// Create edge</span>
+edgeManager.createEdge(sourceId, targetId, options);
+
+<span class="hljs-comment">// Get edge</span>
+edgeManager.getEdge(edgeId);
+edgeManager.getAllEdges();
+
+<span class="hljs-comment">// Update edge</span>
+edgeManager.updateEdge(edgeId, updates);
+
+<span class="hljs-comment">// Remove edge</span>
+edgeManager.removeEdge(edgeId);
+edgeManager.removeEdges([edgeId1, edgeId2]);
+
+<span class="hljs-comment">// Query</span>
+edgeManager.getEdgesForNode(nodeId);
+edgeManager.getIncomingEdges(nodeId);
+edgeManager.getOutgoingEdges(nodeId);
+edgeManager.removeNodeEdges(nodeId);
+
+<span class="hljs-comment">// Operations</span>
+edgeManager.changeEdgeType(edgeId, routingType);
+edgeManager.detectCycles();
+</div></code></pre>
+<h3 id="selectionmanager">SelectionManager</h3>
+<pre class="hljs"><code><div><span class="hljs-comment">// Select</span>
+selectionManager.selectNode(nodeId, addToSelection);
+selectionManager.selectNodes([nodeId1, nodeId2]);
+selectionManager.selectEdge(edgeId, addToSelection);
+selectionManager.selectEdges([edgeId1, edgeId2]);
+
+<span class="hljs-comment">// Clear</span>
+selectionManager.clearSelection();
+
+<span class="hljs-comment">// Query</span>
+selectionManager.getSelection(); <span class="hljs-comment">// { nodes: Set, edges: Set }</span>
+</div></code></pre>
+<h3 id="historymanager">HistoryManager</h3>
+<pre class="hljs"><code><div><span class="hljs-comment">// Execute command</span>
+historyManager.execute(command);
+
+<span class="hljs-comment">// Undo/Redo</span>
+historyManager.undo();
+historyManager.redo();
+historyManager.canUndo();
+historyManager.canRedo();
+
+<span class="hljs-comment">// Clear</span>
+historyManager.clear();
+</div></code></pre>
+<h3 id="clipboardmanager">ClipboardManager</h3>
+<pre class="hljs"><code><div><span class="hljs-comment">// Copy/Paste/Cut</span>
+clipboardManager.copy();
+clipboardManager.paste(offsetX, offsetY);
+clipboardManager.cut();
+
+<span class="hljs-comment">// Query</span>
+clipboardManager.hasContent();
+clipboardManager.clear();
+</div></code></pre>
+<h3 id="exportmanager">ExportManager</h3>
+<pre class="hljs"><code><div><span class="hljs-comment">// Export</span>
+exportManager.exportAsJSON(); <span class="hljs-comment">// Returns JSON string</span>
+exportManager.exportAsSVG(); <span class="hljs-comment">// Returns SVG string</span>
+exportManager.exportAsPNG(); <span class="hljs-comment">// Returns image URL</span>
+
+<span class="hljs-comment">// Import</span>
+exportManager.importFromJSON(jsonString); <span class="hljs-comment">// Returns boolean</span>
+</div></code></pre>
+<hr>
+<h2 id="extending-the-system">Extending the System</h2>
+<h3 id="adding-a-custom-shape">Adding a Custom Shape</h3>
+<pre class="hljs"><code><div><span class="hljs-keyword">import</span> { ShapeBuilder } <span class="hljs-keyword">from</span> <span class="hljs-string">"./shapes/registry/ShapeRegistry.js"</span>;
+
+<span class="hljs-keyword">const</span> myShape = <span class="hljs-keyword">new</span> ShapeBuilder(<span class="hljs-string">"myShape"</span>)
+  .category(<span class="hljs-string">"custom"</span>)
+  .displayName(<span class="hljs-string">"My Shape"</span>)
+  .description(<span class="hljs-string">"A custom shape"</span>)
+  .size(<span class="hljs-number">100</span>, <span class="hljs-number">100</span>)
+  .style({
+    <span class="hljs-attr">fill</span>: <span class="hljs-string">"#FF0000"</span>,
+    <span class="hljs-attr">stroke</span>: <span class="hljs-string">"#000000"</span>,
+    <span class="hljs-attr">strokeWidth</span>: <span class="hljs-number">2</span>,
+  })
+  .build();
+
+<span class="hljs-comment">// Register in shape registry</span>
+<span class="hljs-keyword">const</span> shapeRegistry = app.getService(<span class="hljs-string">"shapeRegistry"</span>);
+shapeRegistry.register(myShape);
+</div></code></pre>
+<h3 id="adding-a-plugin">Adding a Plugin</h3>
+<pre class="hljs"><code><div><span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">MyPlugin</span> </span>{
+  name = <span class="hljs-string">"myPlugin"</span>;
+
+  execute(data) {
+    <span class="hljs-comment">// Plugin logic</span>
+    <span class="hljs-keyword">return</span> result;
+  }
+}
+
+<span class="hljs-keyword">const</span> plugin = <span class="hljs-keyword">new</span> MyPlugin();
+app.registerPlugin(plugin);
+
+<span class="hljs-comment">// Execute plugin</span>
+<span class="hljs-keyword">const</span> result = pluginManager.execute(<span class="hljs-string">"myPlugin"</span>, data);
+</div></code></pre>
+<h3 id="creating-a-custom-manager">Creating a Custom Manager</h3>
+<pre class="hljs"><code><div><span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">CustomManager</span> </span>{
+  <span class="hljs-keyword">constructor</span>(eventBus, stateManager) {
+    <span class="hljs-keyword">this</span>.eventBus = eventBus;
+    <span class="hljs-keyword">this</span>.stateManager = stateManager;
+  }
+
+  <span class="hljs-comment">// Your custom logic</span>
+}
+
+<span class="hljs-comment">// Register in ServiceProvider</span>
+ServiceProvider.registerCustom(<span class="hljs-string">"customManager"</span>, (container) =&gt; {
+  <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> CustomManager(
+    container.get(<span class="hljs-string">"eventBus"</span>),
+    container.get(<span class="hljs-string">"stateManager"</span>)
+  );
+});
+</div></code></pre>
+<h3 id="adding-custom-validation-rules">Adding Custom Validation Rules</h3>
+<pre class="hljs"><code><div><span class="hljs-keyword">const</span> validationManager = app.getManager(<span class="hljs-string">"validation"</span>);
+
+validationManager.addRule(<span class="hljs-string">"customConnection"</span>, (sourceId, targetId) =&gt; {
+  <span class="hljs-comment">// Your validation logic</span>
+  <span class="hljs-keyword">return</span> <span class="hljs-literal">true</span>; <span class="hljs-comment">// or false if not allowed</span>
+});
+</div></code></pre>
+<hr>
+<h2 id="testing-architecture">Testing Architecture</h2>
+<h3 id="unit-testing">Unit Testing</h3>
+<pre class="hljs"><code><div><span class="hljs-comment">// Test a manager in isolation</span>
+describe(<span class="hljs-string">'NodeManager'</span>, () =&gt; {
+  it(<span class="hljs-string">'should create a node'</span>, () =&gt; {
+    <span class="hljs-keyword">const</span> nodeManager = <span class="hljs-keyword">new</span> NodeManager(editor, stateManager, ...);
+    <span class="hljs-keyword">const</span> node = nodeManager.createNode(<span class="hljs-string">'rect'</span>, <span class="hljs-number">0</span>, <span class="hljs-number">0</span>);
+    expect(node).toBeDefined();
+    expect(node.type).toBe(<span class="hljs-string">'rect'</span>);
+  });
+});
+</div></code></pre>
+<h3 id="integration-testing">Integration Testing</h3>
+<pre class="hljs"><code><div><span class="hljs-comment">// Test multiple components working together</span>
+describe(<span class="hljs-string">"Node Creation Flow"</span>, () =&gt; {
+  it(<span class="hljs-string">"should create node and update UI"</span>, () =&gt; {
+    app.initialize();
+    <span class="hljs-keyword">const</span> eventBus = app.getService(<span class="hljs-string">"eventBus"</span>);
+    <span class="hljs-keyword">let</span> nodeCreated = <span class="hljs-literal">false</span>;
+
+    eventBus.on(<span class="hljs-string">"node:created"</span>, () =&gt; {
+      nodeCreated = <span class="hljs-literal">true</span>;
+    });
+
+    app.getManager(<span class="hljs-string">"node"</span>).createNode(<span class="hljs-string">"rect"</span>, <span class="hljs-number">0</span>, <span class="hljs-number">0</span>);
+    expect(nodeCreated).toBe(<span class="hljs-literal">true</span>);
+  });
+});
+</div></code></pre>
+<hr>
+<h2 id="performance-considerations">Performance Considerations</h2>
+<ol>
+<li><strong>Lazy Loading</strong>: Services are created on demand</li>
+<li><strong>Event Batching</strong>: Batch updates to reduce re-renders</li>
+<li><strong>Virtual Rendering</strong>: Only render visible elements</li>
+<li><strong>Debouncing</strong>: Debounce frequent events (dragging, zooming)</li>
+<li><strong>Caching</strong>: Cache computed values (layouts, paths)</li>
+</ol>
+<hr>
+<h2 id="file-structure">File Structure</h2>
+<pre class="hljs"><code><div>src/
+├── app/
+│   └── main.js                      # Application bootstrap
+├── core/
+│   ├── container/
+│   │   ├── ServiceContainer.js
+│   │   └── ServiceProvider.js
+│   ├── events/
+│   │   └── EventBus.js
+│   ├── state/
+│   │   └── EditorState.js
+│   ├── models/
+│   │   └── index.js
+│   ├── views/
+│   │   └── index.js
+│   ├── controllers/
+│   │   └── index.js
+│   ├── managers/
+│   │   ├── NodeManager.js
+│   │   ├── EdgeManager.js
+│   │   └── index.js
+│   └── Editor.js
+├── shapes/
+│   ├── registry/
+│   │   └── ShapeRegistry.js
+│   └── shapeLoader.js
+└── ui/
+    ├── panels/
+    │   ├── LeftPalette.js
+    │   ├── RightInspector.js
+    │   ├── LayersPanel.js
+    │   └── MiniMap.js
+    ├── bars/
+    │   ├── MenuBar.js
+    │   ├── ToolBar.js
+    │   └── StatusBar.js
+    └── dialogs/
+        ├── ExportDialog.js
+        ├── ShapePickerDialog.js
+        └── ColorPickerDialog.js
+</div></code></pre>
+<hr>
+<h2 id="next-steps">Next Steps</h2>
+<ol>
+<li>Implement remaining UI components</li>
+<li>Add custom shape renderers</li>
+<li>Implement diagram layout algorithms</li>
+<li>Add collaborative editing</li>
+<li>Create plugin system examples</li>
+<li>Add comprehensive test suite</li>
+</ol>
+<h2 id="create-the-complete-directory-structure-for-flowchart-editor-v2">Create the complete directory structure for flowchart-editor-v2</h2>
+<pre class="hljs"><code><div>bash
+
+cd /home/... &amp;&amp; mkdir -p flowchart-editor-v2/{assets/{icons,sprite},config,docs/{api,examples,guides},examples/{advanced,basic,diagrams},src/{app,core/{container,controllers,events,managers,models,state,views},shapes/{base,helpers,library/{arrows/{curved-arrow,double-arrow,straight-arrow},basic/{circle,diamond,ellipse,polygon,rect,star,triangle},containers/{frame,group,swimlane},flowchart/{data,decision,display,document,manual-input,predefined-process,preparation,process,terminator},network/{cloud,database,firewall,router,server,switch,workstation},text/{callout,label,note},uml/{actor,class,component,interface,note,package}},loader,presets,registry},styles/{base,components,layout},ui/{bars,dialogs,overlays,panels},utils/{dom,geometry,math,validation}},tests/{e2e/{managers,shapes,utils},integration/{managers,shapes,utils},unit/{managers,shapes,utils}}}
+</div></code></pre>
+
+</body>
+</html>

@@ -2,6 +2,15 @@ import { DebugLogger, DebugControl } from "../utils/debug/DebugLogger.js";
 import { DOMUtils } from "../utils/dom/dom.js";
 import { ServiceContainer, ServiceProvider } from "../core/container/index.js";
 import { ShapeLoader } from "../shapes/loader/index.js";
+import { ToolBar } from "../ui/bars/ToolBar.js";
+import { MenuBar } from "../ui/bars/MenuBar.js";
+import { StatusBar } from "../ui/bars/StatusBar.js";
+import {
+  LeftPalette,
+  RightInspector,
+  LayersPanel,
+  MiniMap,
+} from "../ui/panels/Panels.js";
 
 class FlowchartApp {
   constructor(options = {}) {
@@ -20,37 +29,35 @@ class FlowchartApp {
 
     this.log.enter("constructor");
 
-    this.container = null;
-    this.services = null;
-    this.eventBus = null;
-    this.stateManager = null;
-    this.editor = null;
-    this.managers = {};
-    this.ui = {};
-
+    this.container = new ServiceContainer();
     this.log.exit("constructor");
   }
 
   async initialize() {
     this.log.enter("Initialization started");
 
-    this.log.stage("Setting up service container");
-    this.container = new ServiceContainer();
-
-    this.log.stage("Registering services");
-    ServiceProvider.register(this.container);
-    this.container.printDebugInfo();
-
+    // Step 1: Create DOM Structure for the App
     this.log.stage("Creating DOM structure");
     this.createDOMStructure();
 
+    // Step 2: Register Services
+    this.log.stage("Registering services");
+    ServiceProvider.register(this.container);
+
+    // Step 3: Retrieve Core Services
     this.log.stage("Getting core services");
     this.eventBus = this.container.get("eventBus");
-    this.stateManager = this.container.get("stateManager");
     this.shapeRegistry = this.container.get("shapeRegistry");
+    this.stateManager = this.container.get("stateManager");
 
+    // Step 4: Load Built-in Shapes
     this.log.stage(" Loading built-in shapes");
-    ShapeLoader.loadBuiltInShapes(this.shapeRegistry);
+    const shapeLoader = new ShapeLoader(this.shapeRegistry);
+    await shapeLoader.loadBuiltInShapes();
+
+    // Step 5: Setup UI
+    this.log.stage("Setting up UI");
+    this.setupUI();
 
     this.log.exit("Initialization completed");
   }
@@ -218,6 +225,35 @@ class FlowchartApp {
     appContainer.appendChild(this.ui.flowchartEditorContainer);
 
     this.log.exit("createDOMStructure");
+  }
+
+  setupUI() {
+    this.log.enter("setupUI");
+    this.log.stage(" Initializing MenuBar");
+    const menuBar = new MenuBar(this.eventBus, this.stateManager);
+    menuBar.initialize(this.ui.menuBar);
+
+    this.log.stage(" Initializing ToolBar");
+    const toolBar = new ToolBar(this.eventBus, this.stateManager);
+    toolBar.initialize(this.ui.toolBar);
+
+    this.log.stage(" Initializing StatusBar");
+    const statusBar = new StatusBar(this.eventBus, this.stateManager);
+    statusBar.initialize(this.ui.statusBar);
+
+    this.log.stage(" Initializing LeftPalette");
+    const leftPalette = new LeftPalette(this.eventBus, this.stateManager);
+    leftPalette.initialize(this.ui.shapePalette);
+
+    this.log.stage(" Initializing RightInspector");
+    const rightInspector = new RightInspector(this.eventBus, this.stateManager);
+    rightInspector.initialize(this.ui.inspectorPanel);
+
+    this.log.stage(" Initializing MiniMap");
+    const miniMap = new MiniMap(this.eventBus, this.stateManager);
+    miniMap.initialize(this.ui.miniMap);
+
+    this.log.exit("setupUI");
   }
 }
 

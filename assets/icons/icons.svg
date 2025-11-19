@@ -3,7 +3,7 @@
   <!-- ====================== -->
   <!-- File / Project Icons -->
   <!-- ====================== -->
-  <symbol id="new-file" viewBox="0 0 24 24">
+  <symbol id="new-file" viewBox="0 0 24 24" stroke="currentColor" fill="none">
    <!-- Document -->
   <path d="M14 2 L6 2 C5 2 4 3 4 4 L4 20 C4 21 5 22 6 22 L18 22 C19 22 20 21 20 20 L20 8 Z" 
         fill="none" 

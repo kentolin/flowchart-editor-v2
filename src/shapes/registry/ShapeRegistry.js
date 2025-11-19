@@ -1,3 +1,5 @@
+import { DebugLogger } from "../../utils/debug/DebugLogger.js";
+
 /**
  * ShapeRegistry.js - Central Shape Registry
  *
@@ -6,9 +8,6 @@
  *
  * @module shapes/registry/ShapeRegistry
  */
-
-import { DebugLogger } from "../../utils/debug/DebugLogger.js";
-
 export class ShapeRegistry {
   constructor() {
     this.log = DebugLogger.for(this);

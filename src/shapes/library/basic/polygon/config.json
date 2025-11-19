@@ -1,5 +1,5 @@
 {
-  "id": "polygon",
+  "id": "basic-polygon",
   "name": "Polygon",
   "category": "basic",
   "description": "Regular polygon with configurable sides",

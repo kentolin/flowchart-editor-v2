@@ -93,8 +93,8 @@
   --line-height-relaxed: 1.75;
 
   /* Layout */
-  --header-height: 40px;
-  --toolbar-height: 48px;
+  --header-height: 30px;
+  --toolbar-height: 30px;
   --statusbar-height: 32px;
   --panel-width: 250px;
   --inspector-width: 280px;
