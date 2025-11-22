@@ -1,0 +1,64 @@
+{
+  "id": "flowchart-manual-input",
+  "name": "Manual Input",
+  "type": "manual-input",
+  "category": "flowchart",
+  "description": "Manual input shape with slanted top edge for representing manual data entry or user input operations",
+  "icon": "preview.svg",
+  "iconSvg": "<path d=\"M 5 6 L 36 6 L 36 30 L 0 30 Z\"/>",
+  "tags": ["flowchart", "manual", "input", "data entry", "user input"],
+  
+  "defaultSize": {
+    "width": 120,
+    "height": 80
+  },
+  
+  "defaultStyle": {
+    "fill": "#ffffff",
+    "stroke": "#000000",
+    "strokeWidth": 2,
+    "opacity": 1,
+    "textColor": "#000000"
+  },
+  
+  "ports": {
+    "enabled": true,
+    "preset": "standard-4",
+    "positions": [
+      { "id": "top", "x": 0.5, "y": 0, "type": "input", "direction": "top" },
+      { "id": "right", "x": 1, "y": 0.5, "type": "output", "direction": "right" },
+      { "id": "bottom", "x": 0.5, "y": 1, "type": "output", "direction": "bottom" },
+      { "id": "left", "x": 0, "y": 0.5, "type": "input", "direction": "left" }
+    ]
+  },
+  
+  "handles": {
+    "enabled": true,
+    "preset": "all-8",
+    "positions": ["n", "ne", "e", "se", "s", "sw", "w", "nw"]
+  },
+  
+  "constraints": {
+    "minWidth": 80,
+    "minHeight": 50,
+    "maxWidth": 1000,
+    "maxHeight": 1000,
+    "aspectRatio": null
+  },
+  
+  "features": {
+    "resizable": true,
+    "rotatable": false,
+    "connectable": true,
+    "groupable": true,
+    "lockable": true,
+    "clonable": true
+  },
+  
+  "metadata": {
+    "version": "1.0.0",
+    "author": "System",
+    "created": "2025-01-01",
+    "updated": "2025-01-01"
+  }
+}

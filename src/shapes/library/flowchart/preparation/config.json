@@ -1,0 +1,66 @@
+{
+  "id": "flowchart-preparation",
+  "name": "Preparation",
+  "type": "preparation",
+  "category": "flowchart",
+  "description": "Preparation or initialization shape (hexagon) for representing setup operations or parameter initialization",
+  "icon": "preview.svg",
+  "iconSvg": "<polygon points=\"5,18 11,6 25,6 31,18 25,30 11,30\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"/>",
+  "tags": ["flowchart", "preparation", "initialization", "setup", "hexagon"],
+  
+  "defaultSize": {
+    "width": 120,
+    "height": 60
+  },
+  
+  "defaultStyle": {
+    "fill": "#ffffff",
+    "stroke": "#000000",
+    "strokeWidth": 2,
+    "opacity": 1,
+    "textColor": "#000000"
+  },
+  
+  "ports": {
+    "enabled": true,
+    "preset": "hexagon-6",
+    "positions": [
+      { "id": "top-left", "x": 0.15, "y": 0, "type": "input", "direction": "top" },
+      { "id": "top-right", "x": 0.85, "y": 0, "type": "input", "direction": "top" },
+      { "id": "right", "x": 1, "y": 0.5, "type": "output", "direction": "right" },
+      { "id": "bottom-right", "x": 0.85, "y": 1, "type": "output", "direction": "bottom" },
+      { "id": "bottom-left", "x": 0.15, "y": 1, "type": "output", "direction": "bottom" },
+      { "id": "left", "x": 0, "y": 0.5, "type": "input", "direction": "left" }
+    ]
+  },
+  
+  "handles": {
+    "enabled": true,
+    "preset": "all-8",
+    "positions": ["n", "ne", "e", "se", "s", "sw", "w", "nw"]
+  },
+  
+  "constraints": {
+    "minWidth": 80,
+    "minHeight": 40,
+    "maxWidth": 1000,
+    "maxHeight": 1000,
+    "aspectRatio": null
+  },
+  
+  "features": {
+    "resizable": true,
+    "rotatable": false,
+    "connectable": true,
+    "groupable": true,
+    "lockable": true,
+    "clonable": true
+  },
+  
+  "metadata": {
+    "version": "1.0.0",
+    "author": "System",
+    "created": "2025-01-01",
+    "updated": "2025-01-01"
+  }
+}

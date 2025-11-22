@@ -1,618 +1,1496 @@
 /**
- * Editor.js - Main editor class for canvas/viewport management
+ * Editor.js - Main SVG Canvas Manager
  *
  * Responsibilities:
- * - Canvas initialization and lifecycle
- * - Viewport management (pan, zoom)
- * - Tool selection and mode switching
- * - Coordinate transformations
- * - Event delegation to appropriate handlers
- * - Rendering orchestration
+ * - Create and manage SVG canvas
+ * - Handle viewport transformations (zoom, pan)
+ * - Manage node and edge layers
+ * - Provide rendering API for shapes
+ * - Handle canvas interactions
  */
 
-export class Editor {
-  constructor(container, options = {}) {
-    this.container = container;
-    this.options = {
-      width: options.width || 1920,
-      height: options.height || 1080,
-      minZoom: options.minZoom || 0.1,
-      maxZoom: options.maxZoom || 5,
-      zoomSpeed: options.zoomSpeed || 0.001,
-      gridEnabled: options.gridEnabled !== false,
-      gridSize: options.gridSize || 20,
-      ...options,
-    };
+import { DebugLogger } from "../utils/debug/DebugLogger.js";
 
-    // Canvas state
-    this.canvas = null;
-    this.svgElement = null;
+export class Editor {
+  constructor(eventBus, stateManager, container) {
+    this.log = new DebugLogger("Editor", "#2196F3");
+    this.log.enter("constructor", { container });
+
+    this.eventBus = eventBus;
+    this.stateManager = stateManager;
+    this.container = container;
+
+    // SVG elements
+    this.svg = null;
+    this.defsLayer = null;
+    this.gridLayer = null;
+    this.edgeLayer = null;
+    this.nodeLayer = null;
+    this.overlayLayer = null;
+
+    // Viewport state
     this.viewport = {
       x: 0,
       y: 0,
       zoom: 1,
+      minZoom: 0.1,
+      maxZoom: 5,
     };
 
-    // Editor state
-    this.mode = "select"; // 'select', 'pan', 'draw', 'text', etc.
-    this.tool = null;
-    this.isDragging = false;
+    // Grid settings
+    this.grid = {
+      enabled: true,
+      size: 20,
+      visible: true,
+    };
+
+    // Canvas size
+    this.canvasSize = {
+      width: 10000,
+      height: 10000,
+    };
+
+    // Interaction state
     this.isPanning = false;
+    this.panStart = { x: 0, y: 0 };
 
-    // Layers
-    this.layers = {
-      grid: null,
-      content: null,
-      overlay: null,
-      ui: null,
-    };
-
-    // Event handlers storage
-    this.handlers = new Map();
-
-    this._initialize();
+    this.log.exit("constructor");
   }
 
   /**
-   * Initialize editor
-   * @private
+   * Initialize the editor
    */
-  _initialize() {
-    this._createCanvas();
-    this._createLayers();
-    this._setupEventListeners();
-    this._render();
+  initialize() {
+    this.log.enter("initialize");
+
+    if (!this.container) {
+      this.log.error("initialize", "Container element not found");
+      throw new Error("Editor container is required");
+    }
+
+    this.log.info("initialize", "Creating SVG structure...");
+    this.createSVGStructure();
+
+    this.log.info("initialize", "Setting up event handlers...");
+    this.setupEventHandlers();
+
+    this.log.info("initialize", "Rendering grid...");
+    this.renderGrid();
+
+    this.log.info("initialize", "Applying initial viewport...");
+    this.updateTransform();
+
+    this.log.info("initialize", "✓ Editor initialized successfully");
+    this.log.exit("initialize");
   }
 
   /**
-   * Create main canvas/SVG element
-   * @private
+   * Create SVG structure with layers
    */
-  _createCanvas() {
-    // Create SVG element
-    this.svgElement = document.createElementNS(
+  createSVGStructure() {
+    this.log.enter("createSVGStructure");
+
+    // Create main SVG element
+    this.svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    this.svg.setAttribute("width", "100%");
+    this.svg.setAttribute("height", "100%");
+    this.svg.setAttribute("class", "editor-canvas");
+    this.svg.style.background = "var(--canvas-background)";
+
+    this.log.info("createSVGStructure", "Created main SVG element");
+
+    // Create defs for reusable elements (markers, patterns, etc.)
+    this.defsLayer = document.createElementNS(
       "http://www.w3.org/2000/svg",
-      "svg"
+      "defs"
     );
-    this.svgElement.setAttribute("width", "100%");
-    this.svgElement.setAttribute("height", "100%");
-    this.svgElement.setAttribute("class", "flowchart-editor-canvas");
-    this.svgElement.style.cssText = "display: block; background: white;";
+    this.svg.appendChild(this.defsLayer);
+    this.log.info("createSVGStructure", "Created defs layer");
 
-    // Create defs for markers, patterns, etc.
-    const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
-    this.svgElement.appendChild(defs);
+    // Add arrow marker for edges
+    this.createArrowMarker();
 
-    // Append to container
-    this.container.appendChild(this.svgElement);
+    // Create main group for viewport transformation
+    const viewportGroup = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "g"
+    );
+    viewportGroup.setAttribute("id", "viewport-group");
+    this.svg.appendChild(viewportGroup);
 
-    this.canvas = this.svgElement;
+    // Create grid layer
+    this.gridLayer = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "g"
+    );
+    this.gridLayer.setAttribute("id", "grid-layer");
+    this.gridLayer.setAttribute("class", "grid-layer");
+    viewportGroup.appendChild(this.gridLayer);
+    this.log.info("createSVGStructure", "Created grid layer");
+
+    // Create edge layer (below nodes)
+    this.edgeLayer = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "g"
+    );
+    this.edgeLayer.setAttribute("id", "edge-layer");
+    this.edgeLayer.setAttribute("class", "edge-layer");
+    viewportGroup.appendChild(this.edgeLayer);
+    this.log.info("createSVGStructure", "Created edge layer");
+
+    // Create node layer
+    this.nodeLayer = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "g"
+    );
+    this.nodeLayer.setAttribute("id", "node-layer");
+    this.nodeLayer.setAttribute("class", "node-layer");
+    viewportGroup.appendChild(this.nodeLayer);
+    this.log.info("createSVGStructure", "Created node layer");
+
+    // Create overlay layer (selection boxes, handles, etc.)
+    this.overlayLayer = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "g"
+    );
+    this.overlayLayer.setAttribute("id", "overlay-layer");
+    this.overlayLayer.setAttribute("class", "overlay-layer");
+    viewportGroup.appendChild(this.overlayLayer);
+    this.log.info("createSVGStructure", "Created overlay layer");
+
+    // Store viewport group reference
+    this.viewportGroup = viewportGroup;
+
+    // Append SVG to container
+    this.container.appendChild(this.svg);
+    this.log.info("createSVGStructure", "Appended SVG to container");
+
+    this.log.exit("createSVGStructure");
   }
 
   /**
-   * Create SVG layers
-   * @private
+   * Setup event handlers for canvas interactions
    */
-  _createLayers() {
-    // Grid layer (bottom)
-    this.layers.grid = document.createElementNS(
-      "http://www.w3.org/2000/svg",
-      "g"
-    );
-    this.layers.grid.setAttribute("class", "layer-grid");
-    this.svgElement.appendChild(this.layers.grid);
+  setupEventHandlers() {
+    this.log.enter("setupEventHandlers");
 
-    // Content layer (nodes and edges)
-    this.layers.content = document.createElementNS(
-      "http://www.w3.org/2000/svg",
-      "g"
-    );
-    this.layers.content.setAttribute("class", "layer-content");
-    this.svgElement.appendChild(this.layers.content);
+    // Mouse wheel for zooming
+    this.svg.addEventListener("wheel", (e) => this.handleWheel(e));
+    this.log.info("setupEventHandlers", "Attached wheel event");
 
-    // Overlay layer (selection boxes, guides)
-    this.layers.overlay = document.createElementNS(
-      "http://www.w3.org/2000/svg",
-      "g"
-    );
-    this.layers.overlay.setAttribute("class", "layer-overlay");
-    this.svgElement.appendChild(this.layers.overlay);
+    // Mouse events for panning
+    this.svg.addEventListener("mousedown", (e) => this.handleMouseDown(e));
+    this.svg.addEventListener("mousemove", (e) => this.handleMouseMove(e));
+    this.svg.addEventListener("mouseup", (e) => this.handleMouseUp(e));
+    this.svg.addEventListener("mouseleave", (e) => this.handleMouseLeave(e));
+    this.log.info("setupEventHandlers", "Attached mouse events for panning");
 
-    // UI layer (top - controls, handles)
-    this.layers.ui = document.createElementNS(
-      "http://www.w3.org/2000/svg",
-      "g"
-    );
-    this.layers.ui.setAttribute("class", "layer-ui");
-    this.svgElement.appendChild(this.layers.ui);
-
-    // Apply viewport transform to content and overlay layers
-    this._updateLayerTransforms();
-  }
-
-  /**
-   * Setup event listeners
-   * @private
-   */
-  _setupEventListeners() {
-    // Mouse events
-    this.on("mousedown", this._handleMouseDown.bind(this));
-    this.on("mousemove", this._handleMouseMove.bind(this));
-    this.on("mouseup", this._handleMouseUp.bind(this));
-    this.on("wheel", this._handleWheel.bind(this), { passive: false });
-
-    // Touch events for mobile
-    this.on("touchstart", this._handleTouchStart.bind(this));
-    this.on("touchmove", this._handleTouchMove.bind(this));
-    this.on("touchend", this._handleTouchEnd.bind(this));
+    // Canvas click event
+    this.svg.addEventListener("click", (e) => this.handleClick(e));
+    this.log.info("setupEventHandlers", "Attached click event");
 
     // Context menu
-    this.on("contextmenu", this._handleContextMenu.bind(this));
+    this.svg.addEventListener("contextmenu", (e) => this.handleContextMenu(e));
+    this.log.info("setupEventHandlers", "Attached context menu event");
 
-    // Keyboard events (attached to window)
-    window.addEventListener("keydown", this._handleKeyDown.bind(this));
-    window.addEventListener("keyup", this._handleKeyUp.bind(this));
+    // Drop event for shapes
+    this.svg.addEventListener("dragover", (e) => this.handleDragOver(e));
+    this.svg.addEventListener("drop", (e) => this.handleDrop(e));
+    this.log.info("setupEventHandlers", "Attached drag & drop events");
+
+    this.log.exit("setupEventHandlers");
   }
 
   /**
-   * Add event listener
+   * Handle mouse wheel for zooming
    */
-  on(event, handler, options) {
-    this.svgElement.addEventListener(event, handler, options);
+  handleWheel(e) {
+    this.log.enter("handleWheel", { deltaY: e.deltaY });
 
-    if (!this.handlers.has(event)) {
-      this.handlers.set(event, []);
+    e.preventDefault();
+
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    const newZoom = Math.max(
+      this.viewport.minZoom,
+      Math.min(this.viewport.maxZoom, this.viewport.zoom * delta)
+    );
+
+    if (newZoom !== this.viewport.zoom) {
+      // Get mouse position in SVG coordinates
+      const rect = this.svg.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      // Calculate zoom center
+      const zoomPointX = (mouseX - this.viewport.x) / this.viewport.zoom;
+      const zoomPointY = (mouseY - this.viewport.y) / this.viewport.zoom;
+
+      // Update zoom
+      this.viewport.zoom = newZoom;
+
+      // Adjust pan to keep zoom point fixed
+      this.viewport.x = mouseX - zoomPointX * this.viewport.zoom;
+      this.viewport.y = mouseY - zoomPointY * this.viewport.zoom;
+
+      this.log.info("handleWheel", `Zoom: ${this.viewport.zoom.toFixed(2)}`);
+      this.updateTransform();
+
+      // Emit viewport changed event
+      this.eventBus.emit("viewport:changed", { ...this.viewport });
     }
-    this.handlers.get(event).push({ handler, options });
+
+    this.log.exit("handleWheel");
   }
 
   /**
-   * Remove event listener
+   * Handle mouse down for panning
    */
-  off(event, handler) {
-    this.svgElement.removeEventListener(event, handler);
+  handleMouseDown(e) {
+    // Only pan with middle mouse button or spacebar + left click
+    if (e.button === 1 || (e.button === 0 && e.shiftKey)) {
+      this.log.enter("handleMouseDown", {
+        button: e.button,
+        shiftKey: e.shiftKey,
+      });
 
-    if (this.handlers.has(event)) {
-      const handlers = this.handlers.get(event);
-      const index = handlers.findIndex((h) => h.handler === handler);
-      if (index > -1) {
-        handlers.splice(index, 1);
-      }
+      e.preventDefault();
+      this.isPanning = true;
+      this.panStart = {
+        x: e.clientX - this.viewport.x,
+        y: e.clientY - this.viewport.y,
+      };
+      this.svg.style.cursor = "grabbing";
+
+      this.log.info("handleMouseDown", "Started panning");
+      this.log.exit("handleMouseDown");
     }
   }
 
   /**
-   * Handle mouse down
-   * @private
+   * Handle mouse move for panning
    */
-  _handleMouseDown(event) {
-    const point = this.getMousePosition(event);
-
-    if (event.button === 1 || (event.button === 0 && event.spaceKey)) {
-      // Middle mouse or space + left mouse = pan
-      this.startPan(point);
-    } else if (event.button === 0) {
-      // Left mouse button
-      this.emit("canvas:mousedown", { point, event });
-    }
-  }
-
-  /**
-   * Handle mouse move
-   * @private
-   */
-  _handleMouseMove(event) {
-    const point = this.getMousePosition(event);
-
+  handleMouseMove(e) {
     if (this.isPanning) {
-      this.updatePan(point);
-    } else {
-      this.emit("canvas:mousemove", { point, event });
+      this.viewport.x = e.clientX - this.panStart.x;
+      this.viewport.y = e.clientY - this.panStart.y;
+
+      this.updateTransform();
+
+      // Emit viewport changed event
+      this.eventBus.emit("viewport:changed", { ...this.viewport });
     }
   }
 
   /**
-   * Handle mouse up
-   * @private
+   * Handle mouse up to stop panning
    */
-  _handleMouseUp(event) {
-    const point = this.getMousePosition(event);
-
+  handleMouseUp(e) {
     if (this.isPanning) {
-      this.endPan();
-    } else {
-      this.emit("canvas:mouseup", { point, event });
+      this.log.enter("handleMouseUp");
+
+      this.isPanning = false;
+      this.svg.style.cursor = "default";
+
+      this.log.info("handleMouseUp", "Stopped panning");
+      this.log.exit("handleMouseUp");
     }
   }
 
   /**
-   * Handle mouse wheel (zoom)
-   * @private
+   * Handle mouse leave to stop panning
    */
-  _handleWheel(event) {
-    event.preventDefault();
+  handleMouseLeave(e) {
+    if (this.isPanning) {
+      this.log.enter("handleMouseLeave");
 
-    const point = this.getMousePosition(event);
-    const delta = -event.deltaY * this.options.zoomSpeed;
+      this.isPanning = false;
+      this.svg.style.cursor = "default";
 
-    this.zoom(delta, point);
+      this.log.info("handleMouseLeave", "Stopped panning (mouse left canvas)");
+      this.log.exit("handleMouseLeave");
+    }
   }
 
   /**
-   * Handle touch start
-   * @private
+   * Handle canvas click
    */
-  _handleTouchStart(event) {
-    // Implement touch handling for mobile
-  }
+  handleClick(e) {
+    // Only handle clicks on the canvas itself, not on nodes/edges
+    if (e.target === this.svg || e.target === this.gridLayer) {
+      this.log.enter("handleClick", { x: e.clientX, y: e.clientY });
 
-  /**
-   * Handle touch move
-   * @private
-   */
-  _handleTouchMove(event) {
-    // Implement touch handling for mobile
-  }
+      const point = this.screenToCanvas(e.clientX, e.clientY);
+      this.log.info(
+        "handleClick",
+        `Canvas clicked at (${point.x}, ${point.y})`
+      );
 
-  /**
-   * Handle touch end
-   * @private
-   */
-  _handleTouchEnd(event) {
-    // Implement touch handling for mobile
+      this.eventBus.emit("canvas:clicked", point);
+
+      this.log.exit("handleClick");
+    }
   }
 
   /**
    * Handle context menu
-   * @private
    */
-  _handleContextMenu(event) {
-    event.preventDefault();
-    const point = this.getMousePosition(event);
-    this.emit("canvas:contextmenu", { point, event });
+  handleContextMenu(e) {
+    this.log.enter("handleContextMenu");
+
+    e.preventDefault();
+    const point = this.screenToCanvas(e.clientX, e.clientY);
+
+    this.log.info(
+      "handleContextMenu",
+      `Context menu at (${point.x}, ${point.y})`
+    );
+    this.eventBus.emit("canvas:contextmenu", {
+      ...point,
+      clientX: e.clientX,
+      clientY: e.clientY,
+    });
+
+    this.log.exit("handleContextMenu");
   }
 
   /**
-   * Handle key down
-   * @private
+   * Handle drag over for drop acceptance
    */
-  _handleKeyDown(event) {
-    this.emit("canvas:keydown", { event });
+  handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
   }
 
   /**
-   * Handle key up
-   * @private
+   * Handle drop for shape creation
    */
-  _handleKeyUp(event) {
-    this.emit("canvas:keyup", { event });
+  handleDrop(e) {
+    this.log.enter("handleDrop");
+
+    e.preventDefault();
+
+    try {
+      const shapeType = e.dataTransfer.getData("application/shape-type");
+      if (shapeType) {
+        const point = this.screenToCanvas(e.clientX, e.clientY);
+        this.log.info(
+          "handleDrop",
+          `Shape '${shapeType}' dropped at (${point.x}, ${point.y})`
+        );
+
+        // Emit event for NodeManager to handle node creation
+        this.eventBus.emit("shape:dropped", {
+          type: shapeType,
+          x: point.x,
+          y: point.y,
+          source: "drop",
+        });
+      } else {
+        this.log.warn("handleDrop", "No shape type in drop data");
+      }
+    } catch (error) {
+      this.log.error("handleDrop", "Failed to handle drop", error);
+    }
+
+    this.log.exit("handleDrop");
   }
 
   /**
-   * Get mouse position in canvas coordinates
+   * Render a node shape using ShapeRegistry
+   * This method creates the SVG representation of a shape
    */
-  getMousePosition(event) {
-    const rect = this.svgElement.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+  renderNode(nodeId, nodeData, shapeDefinition) {
+    this.log.enter("renderNode", { nodeId, type: nodeData.type });
 
-    // Transform to world coordinates
-    return this.screenToWorld({ x, y });
+    try {
+      // Create node group
+      const nodeGroup = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "g"
+      );
+      nodeGroup.setAttribute("data-node-id", nodeId);
+      nodeGroup.setAttribute("class", "node");
+      nodeGroup.setAttribute(
+        "transform",
+        `translate(${nodeData.x}, ${nodeData.y})`
+      );
+
+      // Get shape from registry
+      const shape = shapeDefinition || this.getShapeDefinition(nodeData.type);
+      if (!shape) {
+        this.log.error(
+          "renderNode",
+          `Shape definition not found for type: ${nodeData.type}`
+        );
+        return null;
+      }
+
+      // Create shape path/element based on shape type
+      const shapeElement = this.createShapeElement(shape, nodeData);
+      nodeGroup.appendChild(shapeElement);
+
+      // Add label if exists
+      if (nodeData.label) {
+        const labelElement = this.createLabelElement(nodeData, shape);
+        nodeGroup.appendChild(labelElement);
+      }
+
+      // Add connection ports (hidden by default, shown on hover)
+      const portsGroup = this.createPortsGroup(nodeId, nodeData, shape);
+      portsGroup.style.display = "none";
+      portsGroup.setAttribute("class", "ports-group");
+      nodeGroup.appendChild(portsGroup);
+
+      // Add resize handles (hidden by default, shown on selection)
+      const handlesGroup = this.createResizeHandles(nodeId, nodeData);
+      handlesGroup.style.display = "none";
+      handlesGroup.setAttribute("class", "handles-group");
+      nodeGroup.appendChild(handlesGroup);
+
+      // Setup event handlers for node interactions
+      this.setupNodeInteractions(nodeGroup, nodeId, nodeData);
+
+      // Add to node layer
+      this.addNodeElement(nodeId, nodeGroup);
+
+      this.log.info("renderNode", `✓ Node '${nodeId}' rendered successfully`);
+      this.log.exit("renderNode");
+
+      return nodeGroup;
+    } catch (error) {
+      this.log.error("renderNode", `Failed to render node ${nodeId}`, error);
+      this.log.exit("renderNode");
+      return null;
+    }
   }
 
   /**
-   * Convert screen coordinates to world coordinates
+   * Create SVG shape element based on shape definition
    */
-  screenToWorld(screenPoint) {
-    return {
-      x: screenPoint.x / this.viewport.zoom - this.viewport.x,
-      y: screenPoint.y / this.viewport.zoom - this.viewport.y,
+  createShapeElement(shape, nodeData) {
+    this.log.enter("createShapeElement", { type: shape.type });
+
+    const width = nodeData.width || shape.defaultWidth || 120;
+    const height = nodeData.height || shape.defaultHeight || 60;
+    const style = { ...shape.defaultStyle, ...nodeData.style };
+
+    let element;
+
+    switch (shape.type) {
+      case "rect":
+      case "process":
+        element = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "rect"
+        );
+        element.setAttribute("x", 0);
+        element.setAttribute("y", 0);
+        element.setAttribute("width", width);
+        element.setAttribute("height", height);
+        element.setAttribute("rx", style.borderRadius || 0);
+        break;
+
+      case "circle":
+        element = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "circle"
+        );
+        const radius = Math.min(width, height) / 2;
+        element.setAttribute("cx", width / 2);
+        element.setAttribute("cy", height / 2);
+        element.setAttribute("r", radius);
+        break;
+
+      case "ellipse":
+        element = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "ellipse"
+        );
+        element.setAttribute("cx", width / 2);
+        element.setAttribute("cy", height / 2);
+        element.setAttribute("rx", width / 2);
+        element.setAttribute("ry", height / 2);
+        break;
+
+      case "diamond":
+      case "decision":
+        element = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "path"
+        );
+        const diamondPath = `M ${width / 2} 0 L ${width} ${height / 2} L ${
+          width / 2
+        } ${height} L 0 ${height / 2} Z`;
+        element.setAttribute("d", diamondPath);
+        break;
+
+      case "terminator":
+        element = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "rect"
+        );
+        element.setAttribute("x", 0);
+        element.setAttribute("y", 0);
+        element.setAttribute("width", width);
+        element.setAttribute("height", height);
+        element.setAttribute("rx", height / 2);
+        break;
+
+      default:
+        // Default to rectangle
+        element = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "rect"
+        );
+        element.setAttribute("x", 0);
+        element.setAttribute("y", 0);
+        element.setAttribute("width", width);
+        element.setAttribute("height", height);
+        break;
+    }
+
+    // Apply styles
+    element.setAttribute("fill", style.fill || "#ffffff");
+    element.setAttribute("stroke", style.stroke || "#424242");
+    element.setAttribute("stroke-width", style.strokeWidth || 2);
+    element.setAttribute("class", "shape-element");
+
+    this.log.exit("createShapeElement");
+    return element;
+  }
+
+  /**
+   * Create label element for node
+   */
+  createLabelElement(nodeData, shape) {
+    const width = nodeData.width || shape.defaultWidth || 120;
+    const height = nodeData.height || shape.defaultHeight || 60;
+
+    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    text.setAttribute("x", width / 2);
+    text.setAttribute("y", height / 2);
+    text.setAttribute("text-anchor", "middle");
+    text.setAttribute("dominant-baseline", "middle");
+    text.setAttribute("fill", nodeData.style?.color || "#000000");
+    text.setAttribute("font-size", nodeData.style?.fontSize || "14");
+    text.setAttribute("font-family", "Arial, sans-serif");
+    text.setAttribute("class", "node-label");
+    text.textContent = nodeData.label;
+
+    return text;
+  }
+
+  /**
+   * Create connection ports for node
+   */
+  createPortsGroup(nodeId, nodeData, shape) {
+    this.log.enter("createPortsGroup");
+
+    const portsGroup = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "g"
+    );
+    portsGroup.setAttribute("class", "ports");
+
+    const width = nodeData.width || shape.defaultWidth || 120;
+    const height = nodeData.height || shape.defaultHeight || 60;
+
+    // Define port positions (top, right, bottom, left)
+    const ports = [
+      { id: "top", x: width / 2, y: 0, position: "top" },
+      { id: "right", x: width, y: height / 2, position: "right" },
+      { id: "bottom", x: width / 2, y: height, position: "bottom" },
+      { id: "left", x: 0, y: height / 2, position: "left" },
+    ];
+
+    ports.forEach((port) => {
+      const portCircle = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "circle"
+      );
+      portCircle.setAttribute("cx", port.x);
+      portCircle.setAttribute("cy", port.y);
+      portCircle.setAttribute("r", 6);
+      portCircle.setAttribute("fill", "#2196F3");
+      portCircle.setAttribute("stroke", "#ffffff");
+      portCircle.setAttribute("stroke-width", 2);
+      portCircle.setAttribute("class", "port");
+      portCircle.setAttribute("data-port-id", port.id);
+      portCircle.setAttribute("data-port-position", port.position);
+      portCircle.setAttribute("data-node-id", nodeId);
+      portCircle.style.cursor = "crosshair";
+
+      // Port interaction handlers
+      portCircle.addEventListener("mousedown", (e) => {
+        e.stopPropagation();
+        this.handlePortMouseDown(e, nodeId, port);
+      });
+
+      portsGroup.appendChild(portCircle);
+    });
+
+    this.log.exit("createPortsGroup");
+    return portsGroup;
+  }
+
+  /**
+   * Create resize handles for node
+   */
+  createResizeHandles(nodeId, nodeData) {
+    this.log.enter("createResizeHandles");
+
+    const handlesGroup = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "g"
+    );
+    handlesGroup.setAttribute("class", "resize-handles");
+
+    const width = nodeData.width || 120;
+    const height = nodeData.height || 60;
+
+    // Define handle positions (corners and sides)
+    const handles = [
+      { id: "nw", x: 0, y: 0, cursor: "nw-resize" },
+      { id: "n", x: width / 2, y: 0, cursor: "n-resize" },
+      { id: "ne", x: width, y: 0, cursor: "ne-resize" },
+      { id: "e", x: width, y: height / 2, cursor: "e-resize" },
+      { id: "se", x: width, y: height, cursor: "se-resize" },
+      { id: "s", x: width / 2, y: height, cursor: "s-resize" },
+      { id: "sw", x: 0, y: height, cursor: "sw-resize" },
+      { id: "w", x: 0, y: height / 2, cursor: "w-resize" },
+    ];
+
+    handles.forEach((handle) => {
+      const handleRect = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "rect"
+      );
+      handleRect.setAttribute("x", handle.x - 4);
+      handleRect.setAttribute("y", handle.y - 4);
+      handleRect.setAttribute("width", 8);
+      handleRect.setAttribute("height", 8);
+      handleRect.setAttribute("fill", "#ffffff");
+      handleRect.setAttribute("stroke", "#2196F3");
+      handleRect.setAttribute("stroke-width", 2);
+      handleRect.setAttribute("class", "resize-handle");
+      handleRect.setAttribute("data-handle-id", handle.id);
+      handleRect.setAttribute("data-node-id", nodeId);
+      handleRect.style.cursor = handle.cursor;
+
+      // Handle interaction handlers
+      handleRect.addEventListener("mousedown", (e) => {
+        e.stopPropagation();
+        this.handleResizeStart(e, nodeId, handle);
+      });
+
+      handlesGroup.appendChild(handleRect);
+    });
+
+    this.log.exit("createResizeHandles");
+    return handlesGroup;
+  }
+
+  /**
+   * Setup node interaction handlers
+   */
+  setupNodeInteractions(nodeGroup, nodeId, nodeData) {
+    this.log.enter("setupNodeInteractions", { nodeId });
+
+    // Drag state
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let nodeStartX = 0;
+    let nodeStartY = 0;
+
+    // Get the shape element for drag initiation
+    const shapeElement = nodeGroup.querySelector(".shape-element");
+
+    // Mouse down - start drag
+    const handleMouseDown = (e) => {
+      if (e.button !== 0) return; // Only left mouse button
+
+      isDragging = true;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+
+      // Get current position from transform
+      const transform = nodeGroup.getAttribute("transform");
+      const match = transform
+        ? transform.match(/translate\(([^,]+),\s*([^)]+)\)/)
+        : null;
+      nodeStartX = match ? parseFloat(match[1]) : 0;
+      nodeStartY = match ? parseFloat(match[2]) : 0;
+
+      e.stopPropagation();
+      this.log.info("setupNodeInteractions", `Drag started on node ${nodeId}`);
     };
-  }
 
-  /**
-   * Convert world coordinates to screen coordinates
-   */
-  worldToScreen(worldPoint) {
-    return {
-      x: (worldPoint.x + this.viewport.x) * this.viewport.zoom,
-      y: (worldPoint.y + this.viewport.y) * this.viewport.zoom,
+    // Mouse move - drag node
+    const handleMouseMove = (e) => {
+      if (!isDragging) return;
+
+      const deltaX = e.clientX - dragStartX;
+      const deltaY = e.clientY - dragStartY;
+
+      const newX = nodeStartX + deltaX;
+      const newY = nodeStartY + deltaY;
+
+      nodeGroup.setAttribute("transform", `translate(${newX}, ${newY})`);
     };
+
+    // Mouse up - end drag
+    const handleMouseUp = (e) => {
+      if (!isDragging) return;
+
+      isDragging = false;
+
+      // Get final position
+      const transform = nodeGroup.getAttribute("transform");
+      const match = transform
+        ? transform.match(/translate\(([^,]+),\s*([^)]+)\)/)
+        : null;
+      const finalX = match ? parseFloat(match[1]) : 0;
+      const finalY = match ? parseFloat(match[2]) : 0;
+
+      // Emit node moved event
+      this.eventBus.emit("node:moved", { nodeId, x: finalX, y: finalY });
+
+      this.log.info(
+        "setupNodeInteractions",
+        `Node ${nodeId} moved to (${finalX}, ${finalY})`
+      );
+    };
+
+    // Attach drag handlers
+    if (shapeElement) {
+      shapeElement.addEventListener("mousedown", handleMouseDown);
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+    }
+
+    // Hover to show ports
+    nodeGroup.addEventListener("mouseenter", () => {
+      const portsGroup = nodeGroup.querySelector(".ports-group");
+      if (portsGroup) {
+        portsGroup.style.display = "block";
+      }
+    });
+
+    nodeGroup.addEventListener("mouseleave", () => {
+      const portsGroup = nodeGroup.querySelector(".ports-group");
+      if (portsGroup) {
+        portsGroup.style.display = "none";
+      }
+    });
+
+    // Click to select and show resize handles
+    nodeGroup.addEventListener("click", (e) => {
+      // Don't trigger if we just finished dragging
+      if (
+        Math.abs(e.clientX - dragStartX) > 5 ||
+        Math.abs(e.clientY - dragStartY) > 5
+      ) {
+        return;
+      }
+
+      e.stopPropagation();
+      this.log.info("setupNodeInteractions", `Node ${nodeId} clicked`);
+
+      // Hide all other resize handles
+      this.nodeLayer.querySelectorAll(".handles-group").forEach((group) => {
+        group.style.display = "none";
+      });
+
+      // Show this node's resize handles
+      const handlesGroup = nodeGroup.querySelector(".handles-group");
+      if (handlesGroup) {
+        handlesGroup.style.display = "block";
+      }
+
+      // Emit selection event
+      this.eventBus.emit("node:selected", { nodeId, nodeData });
+    });
+
+    // Double-click to edit label
+    nodeGroup.addEventListener("dblclick", (e) => {
+      e.stopPropagation();
+      this.log.info("setupNodeInteractions", `Node ${nodeId} double-clicked`);
+      this.eventBus.emit("node:edit", { nodeId, nodeData });
+    });
+
+    this.log.exit("setupNodeInteractions");
   }
 
   /**
-   * Start panning
+   * Handle port mouse down (start edge creation)
    */
-  startPan(point) {
-    this.isPanning = true;
-    this.panStart = { ...point };
-    this.viewportStart = { ...this.viewport };
-    this.svgElement.style.cursor = "grabbing";
-  }
+  handlePortMouseDown(e, nodeId, port) {
+    this.log.enter("handlePortMouseDown", { nodeId, portId: port.id });
 
-  /**
-   * Update pan position
-   */
-  updatePan(point) {
-    if (!this.isPanning) return;
+    e.stopPropagation();
 
-    const dx = point.x - this.panStart.x;
-    const dy = point.y - this.panStart.y;
-
-    this.viewport.x = this.viewportStart.x + dx / this.viewport.zoom;
-    this.viewport.y = this.viewportStart.y + dy / this.viewport.zoom;
-
-    this._updateLayerTransforms();
-    this.emit("viewport:changed", { viewport: this.viewport });
-  }
-
-  /**
-   * End panning
-   */
-  endPan() {
-    this.isPanning = false;
-    this.svgElement.style.cursor = "default";
-  }
-
-  /**
-   * Zoom in/out
-   */
-  zoom(delta, center) {
-    const oldZoom = this.viewport.zoom;
-    const newZoom = Math.max(
-      this.options.minZoom,
-      Math.min(this.options.maxZoom, oldZoom + delta)
+    this.log.info(
+      "handlePortMouseDown",
+      `Starting edge from node ${nodeId}, port ${port.id}`
     );
 
-    if (newZoom === oldZoom) return;
+    // Emit event for EdgeManager to handle edge creation
+    this.eventBus.emit("port:mousedown", {
+      nodeId,
+      portId: port.id,
+      portPosition: port.position,
+      clientX: e.clientX,
+      clientY: e.clientY,
+    });
 
-    // Zoom towards center point
-    const worldCenter = this.screenToWorld(center);
-    this.viewport.zoom = newZoom;
-    const newWorldCenter = this.screenToWorld(center);
-
-    this.viewport.x += worldCenter.x - newWorldCenter.x;
-    this.viewport.y += worldCenter.y - newWorldCenter.y;
-
-    this._updateLayerTransforms();
-    this.emit("viewport:changed", { viewport: this.viewport });
+    this.log.exit("handlePortMouseDown");
   }
 
   /**
-   * Set zoom level
+   * Handle resize start
    */
-  setZoom(zoom, center) {
-    const delta = zoom - this.viewport.zoom;
-    this.zoom(delta, center || this.getCenter());
+  handleResizeStart(e, nodeId, handle) {
+    this.log.enter("handleResizeStart", { nodeId, handleId: handle.id });
+
+    e.stopPropagation();
+
+    this.log.info(
+      "handleResizeStart",
+      `Starting resize of node ${nodeId} from handle ${handle.id}`
+    );
+
+    // Emit event for NodeManager to handle resizing
+    this.eventBus.emit("node:resizestart", {
+      nodeId,
+      handleId: handle.id,
+      clientX: e.clientX,
+      clientY: e.clientY,
+    });
+
+    this.log.exit("handleResizeStart");
   }
 
   /**
-   * Reset viewport to default
+   * Get shape definition from ShapeRegistry
    */
-  resetViewport() {
-    this.viewport = { x: 0, y: 0, zoom: 1 };
-    this._updateLayerTransforms();
-    this.emit("viewport:changed", { viewport: this.viewport });
-  }
+  getShapeDefinition(shapeType) {
+    this.log.enter("getShapeDefinition", { shapeType });
 
-  /**
-   * Fit content in viewport
-   */
-  fitToContent(padding = 50) {
-    // This would calculate bounds of all content and zoom/pan to fit
-    // Implementation depends on NodeManager
-  }
-
-  /**
-   * Get center of viewport
-   */
-  getCenter() {
-    const rect = this.svgElement.getBoundingClientRect();
-    return {
-      x: rect.width / 2,
-      y: rect.height / 2,
+    // This would be injected via constructor or retrieved from container
+    // For now, return a basic definition
+    const basicShapes = {
+      rect: {
+        type: "rect",
+        defaultWidth: 120,
+        defaultHeight: 60,
+        defaultStyle: {},
+      },
+      circle: {
+        type: "circle",
+        defaultWidth: 80,
+        defaultHeight: 80,
+        defaultStyle: {},
+      },
+      diamond: {
+        type: "diamond",
+        defaultWidth: 120,
+        defaultHeight: 80,
+        defaultStyle: {},
+      },
+      process: {
+        type: "process",
+        defaultWidth: 120,
+        defaultHeight: 60,
+        defaultStyle: {},
+      },
+      decision: {
+        type: "decision",
+        defaultWidth: 120,
+        defaultHeight: 80,
+        defaultStyle: {},
+      },
+      terminator: {
+        type: "terminator",
+        defaultWidth: 140,
+        defaultHeight: 60,
+        defaultStyle: {},
+      },
     };
+
+    const shape = basicShapes[shapeType];
+
+    this.log.exit("getShapeDefinition");
+    return shape || basicShapes.rect;
   }
 
   /**
-   * Update layer transforms
-   * @private
+   * Render an edge connection between nodes
    */
-  _updateLayerTransforms() {
-    const transform = `translate(${this.viewport.x * this.viewport.zoom}, ${
-      this.viewport.y * this.viewport.zoom
-    }) scale(${this.viewport.zoom})`;
+  renderEdge(edgeId, edgeData) {
+    this.log.enter("renderEdge", {
+      edgeId,
+      sourceId: edgeData.sourceId,
+      targetId: edgeData.targetId,
+    });
 
-    this.layers.content.setAttribute("transform", transform);
-    this.layers.overlay.setAttribute("transform", transform);
+    try {
+      // Create edge group
+      const edgeGroup = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "g"
+      );
+      edgeGroup.setAttribute("data-edge-id", edgeId);
+      edgeGroup.setAttribute("class", "edge");
 
-    // Grid doesn't scale, but translates
-    if (this.options.gridEnabled) {
-      this._renderGrid();
+      // Calculate path based on source and target positions
+      const path = this.calculateEdgePath(edgeData);
+
+      // Create path element
+      const pathElement = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "path"
+      );
+      pathElement.setAttribute("d", path);
+      pathElement.setAttribute("fill", "none");
+      pathElement.setAttribute("stroke", edgeData.style?.stroke || "#757575");
+      pathElement.setAttribute(
+        "stroke-width",
+        edgeData.style?.strokeWidth || 2
+      );
+      pathElement.setAttribute("class", "edge-path");
+
+      // Add arrow marker
+      pathElement.setAttribute("marker-end", "url(#arrowhead)");
+
+      edgeGroup.appendChild(pathElement);
+
+      // Add label if exists
+      if (edgeData.label) {
+        const labelElement = this.createEdgeLabel(edgeData, path);
+        edgeGroup.appendChild(labelElement);
+      }
+
+      // Add to edge layer
+      this.addEdgeElement(edgeId, edgeGroup);
+
+      this.log.info("renderEdge", `✓ Edge '${edgeId}' rendered successfully`);
+      this.log.exit("renderEdge");
+
+      return edgeGroup;
+    } catch (error) {
+      this.log.error("renderEdge", `Failed to render edge ${edgeId}`, error);
+      this.log.exit("renderEdge");
+      return null;
     }
   }
 
   /**
-   * Render grid
-   * @private
+   * Calculate edge path
    */
-  _renderGrid() {
+  calculateEdgePath(edgeData) {
+    const { sourceX, sourceY, targetX, targetY } = edgeData;
+
+    // Simple straight line for now
+    // TODO: Implement bezier curves and orthogonal routing
+    return `M ${sourceX} ${sourceY} L ${targetX} ${targetY}`;
+  }
+
+  /**
+   * Create edge label
+   */
+  createEdgeLabel(edgeData, path) {
+    const { sourceX, sourceY, targetX, targetY } = edgeData;
+
+    const midX = (sourceX + targetX) / 2;
+    const midY = (sourceY + targetY) / 2;
+
+    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    text.setAttribute("x", midX);
+    text.setAttribute("y", midY - 5);
+    text.setAttribute("text-anchor", "middle");
+    text.setAttribute("fill", "#424242");
+    text.setAttribute("font-size", "12");
+    text.setAttribute("class", "edge-label");
+    text.textContent = edgeData.label;
+
+    return text;
+  }
+
+  /**
+   * Update viewport transform
+   */
+  updateTransform() {
+    this.log.enter("updateTransform", this.viewport);
+
+    const transform = `translate(${this.viewport.x}, ${this.viewport.y}) scale(${this.viewport.zoom})`;
+    this.viewportGroup.setAttribute("transform", transform);
+
+    this.log.info("updateTransform", `Applied transform: ${transform}`);
+    this.log.exit("updateTransform");
+  }
+
+  /**
+   * Render grid pattern
+   */
+  renderGrid() {
+    this.log.enter("renderGrid");
+
+    if (!this.grid.enabled || !this.grid.visible) {
+      this.gridLayer.innerHTML = "";
+      this.log.info("renderGrid", "Grid disabled or hidden");
+      this.log.exit("renderGrid");
+      return;
+    }
+
+    this.log.info("renderGrid", `Creating grid with size ${this.grid.size}`);
+
     // Clear existing grid
-    while (this.layers.grid.firstChild) {
-      this.layers.grid.removeChild(this.layers.grid.firstChild);
-    }
+    this.gridLayer.innerHTML = "";
 
-    if (!this.options.gridEnabled) return;
+    const size = this.grid.size;
+    const width = this.canvasSize.width;
+    const height = this.canvasSize.height;
 
-    const rect = this.svgElement.getBoundingClientRect();
-    const gridSize = this.options.gridSize * this.viewport.zoom;
-    const offsetX = (this.viewport.x * this.viewport.zoom) % gridSize;
-    const offsetY = (this.viewport.y * this.viewport.zoom) % gridSize;
+    // Create pattern in defs
+    const patternId = "grid-pattern";
+    let pattern = this.defsLayer.querySelector(`#${patternId}`);
 
-    // Draw vertical lines
-    for (let x = offsetX; x < rect.width; x += gridSize) {
-      const line = document.createElementNS(
+    if (!pattern) {
+      pattern = document.createElementNS(
         "http://www.w3.org/2000/svg",
-        "line"
+        "pattern"
       );
-      line.setAttribute("x1", x);
-      line.setAttribute("y1", 0);
-      line.setAttribute("x2", x);
-      line.setAttribute("y2", rect.height);
-      line.setAttribute("stroke", "#e0e0e0");
-      line.setAttribute("stroke-width", 1);
-      this.layers.grid.appendChild(line);
+      pattern.setAttribute("id", patternId);
+      pattern.setAttribute("patternUnits", "userSpaceOnUse");
+      this.defsLayer.appendChild(pattern);
     }
 
-    // Draw horizontal lines
-    for (let y = offsetY; y < rect.height; y += gridSize) {
-      const line = document.createElementNS(
-        "http://www.w3.org/2000/svg",
-        "line"
+    pattern.setAttribute("width", size);
+    pattern.setAttribute("height", size);
+
+    // Clear pattern
+    pattern.innerHTML = "";
+
+    // Add grid lines to pattern
+    const line1 = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "line"
+    );
+    line1.setAttribute("x1", 0);
+    line1.setAttribute("y1", 0);
+    line1.setAttribute("x2", size);
+    line1.setAttribute("y2", 0);
+    line1.setAttribute("stroke", "var(--canvas-grid)");
+    line1.setAttribute("stroke-width", "1");
+    pattern.appendChild(line1);
+
+    const line2 = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "line"
+    );
+    line2.setAttribute("x1", 0);
+    line2.setAttribute("y1", 0);
+    line2.setAttribute("x2", 0);
+    line2.setAttribute("y2", size);
+    line2.setAttribute("stroke", "var(--canvas-grid)");
+    line2.setAttribute("stroke-width", "1");
+    pattern.appendChild(line2);
+
+    // Create rectangle with pattern
+    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    rect.setAttribute("x", -width / 2);
+    rect.setAttribute("y", -height / 2);
+    rect.setAttribute("width", width);
+    rect.setAttribute("height", height);
+    rect.setAttribute("fill", `url(#${patternId})`);
+    rect.setAttribute("pointer-events", "none");
+    this.gridLayer.appendChild(rect);
+
+    this.log.info("renderGrid", "✓ Grid rendered");
+    this.log.exit("renderGrid");
+  }
+
+  /**
+   * Add node element to canvas
+   */
+  addNodeElement(nodeId, element) {
+    this.log.enter("addNodeElement", { nodeId });
+
+    element.setAttribute("data-node-id", nodeId);
+    this.nodeLayer.appendChild(element);
+
+    this.log.info("addNodeElement", `✓ Node '${nodeId}' added to canvas`);
+    this.log.exit("addNodeElement");
+  }
+
+  /**
+   * Remove node element from canvas
+   */
+  removeNodeElement(nodeId) {
+    this.log.enter("removeNodeElement", { nodeId });
+
+    const element = this.nodeLayer.querySelector(`[data-node-id="${nodeId}"]`);
+    if (element) {
+      element.remove();
+      this.log.info(
+        "removeNodeElement",
+        `✓ Node '${nodeId}' removed from canvas`
       );
-      line.setAttribute("x1", 0);
-      line.setAttribute("y1", y);
-      line.setAttribute("x2", rect.width);
-      line.setAttribute("y2", y);
-      line.setAttribute("stroke", "#e0e0e0");
-      line.setAttribute("stroke-width", 1);
-      this.layers.grid.appendChild(line);
-    }
-  }
-
-  /**
-   * Set editor mode
-   */
-  setMode(mode) {
-    this.mode = mode;
-    this.emit("mode:changed", { mode });
-  }
-
-  /**
-   * Get editor mode
-   */
-  getMode() {
-    return this.mode;
-  }
-
-  /**
-   * Set active tool
-   */
-  setTool(tool) {
-    this.tool = tool;
-    this.emit("tool:changed", { tool });
-  }
-
-  /**
-   * Get active tool
-   */
-  getTool() {
-    return this.tool;
-  }
-
-  /**
-   * Render canvas
-   */
-  render() {
-    this._render();
-  }
-
-  /**
-   * Internal render method
-   * @private
-   */
-  _render() {
-    // Render grid
-    if (this.options.gridEnabled) {
-      this._renderGrid();
+    } else {
+      this.log.warn(
+        "removeNodeElement",
+        `Node '${nodeId}' not found in canvas`
+      );
     }
 
-    // Other rendering would be handled by managers
-    this.emit("render");
+    this.log.exit("removeNodeElement");
   }
 
   /**
-   * Clear canvas
+   * Add edge element to canvas
    */
-  clear() {
-    // Clear content layer
-    while (this.layers.content.firstChild) {
-      this.layers.content.removeChild(this.layers.content.firstChild);
-    }
+  addEdgeElement(edgeId, element) {
+    this.log.enter("addEdgeElement", { edgeId });
 
-    // Clear overlay layer
-    while (this.layers.overlay.firstChild) {
-      this.layers.overlay.removeChild(this.layers.overlay.firstChild);
-    }
+    element.setAttribute("data-edge-id", edgeId);
+    this.edgeLayer.appendChild(element);
 
-    this.emit("canvas:cleared");
+    this.log.info("addEdgeElement", `✓ Edge '${edgeId}' added to canvas`);
+    this.log.exit("addEdgeElement");
   }
 
   /**
-   * Get canvas size
+   * Remove edge element from canvas
    */
-  getSize() {
-    const rect = this.svgElement.getBoundingClientRect();
-    return {
-      width: rect.width,
-      height: rect.height,
+  removeEdgeElement(edgeId) {
+    this.log.enter("removeEdgeElement", { edgeId });
+
+    const element = this.edgeLayer.querySelector(`[data-edge-id="${edgeId}"]`);
+    if (element) {
+      element.remove();
+      this.log.info(
+        "removeEdgeElement",
+        `✓ Edge '${edgeId}' removed from canvas`
+      );
+    } else {
+      this.log.warn(
+        "removeEdgeElement",
+        `Edge '${edgeId}' not found in canvas`
+      );
+    }
+
+    this.log.exit("removeEdgeElement");
+  }
+
+  /**
+   * Convert screen coordinates to canvas coordinates
+   */
+  screenToCanvas(screenX, screenY) {
+    this.log.enter("screenToCanvas", { screenX, screenY });
+
+    const rect = this.svg.getBoundingClientRect();
+    const x = (screenX - rect.left - this.viewport.x) / this.viewport.zoom;
+    const y = (screenY - rect.top - this.viewport.y) / this.viewport.zoom;
+
+    this.log.info("screenToCanvas", `Converted to canvas: (${x}, ${y})`);
+    this.log.exit("screenToCanvas");
+
+    return { x, y };
+  }
+
+  /**
+   * Convert canvas coordinates to screen coordinates
+   */
+  canvasToScreen(canvasX, canvasY) {
+    this.log.enter("canvasToScreen", { canvasX, canvasY });
+
+    const rect = this.svg.getBoundingClientRect();
+    const x = canvasX * this.viewport.zoom + this.viewport.x + rect.left;
+    const y = canvasY * this.viewport.zoom + this.viewport.y + rect.top;
+
+    this.log.info("canvasToScreen", `Converted to screen: (${x}, ${y})`);
+    this.log.exit("canvasToScreen");
+
+    return { x, y };
+  }
+
+  /**
+   * Set viewport (zoom and pan)
+   */
+  setViewport(viewport) {
+    this.log.enter("setViewport", viewport);
+
+    if (viewport.x !== undefined) this.viewport.x = viewport.x;
+    if (viewport.y !== undefined) this.viewport.y = viewport.y;
+    if (viewport.zoom !== undefined) {
+      this.viewport.zoom = Math.max(
+        this.viewport.minZoom,
+        Math.min(this.viewport.maxZoom, viewport.zoom)
+      );
+    }
+
+    this.updateTransform();
+    this.eventBus.emit("viewport:changed", { ...this.viewport });
+
+    this.log.info("setViewport", "✓ Viewport updated");
+    this.log.exit("setViewport");
+  }
+
+  /**
+   * Get current viewport
+   */
+  getViewport() {
+    return { ...this.viewport };
+  }
+
+  /**
+   * Zoom to fit all content
+   */
+  fitToView(padding = 50) {
+    this.log.enter("fitToView", { padding });
+
+    // Get bounding box of all content
+    const bbox = this.getContentBounds();
+    if (!bbox) {
+      this.log.warn("fitToView", "No content to fit");
+      this.log.exit("fitToView");
+      return;
+    }
+
+    const rect = this.svg.getBoundingClientRect();
+    const availableWidth = rect.width - padding * 2;
+    const availableHeight = rect.height - padding * 2;
+
+    // Calculate zoom to fit
+    const zoomX = availableWidth / bbox.width;
+    const zoomY = availableHeight / bbox.height;
+    const zoom = Math.min(zoomX, zoomY, this.viewport.maxZoom);
+
+    // Calculate center position
+    const x = (rect.width - bbox.width * zoom) / 2 - bbox.x * zoom;
+    const y = (rect.height - bbox.height * zoom) / 2 - bbox.y * zoom;
+
+    this.setViewport({ x, y, zoom });
+
+    this.log.info("fitToView", `✓ Fitted to view with zoom ${zoom.toFixed(2)}`);
+    this.log.exit("fitToView");
+  }
+
+  /**
+   * Get bounding box of all content
+   */
+  getContentBounds() {
+    this.log.enter("getContentBounds");
+
+    const nodes = this.nodeLayer.children;
+    if (nodes.length === 0) {
+      this.log.info("getContentBounds", "No nodes found");
+      this.log.exit("getContentBounds");
+      return null;
+    }
+
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    for (const node of nodes) {
+      const bbox = node.getBBox();
+      minX = Math.min(minX, bbox.x);
+      minY = Math.min(minY, bbox.y);
+      maxX = Math.max(maxX, bbox.x + bbox.width);
+      maxY = Math.max(maxY, bbox.y + bbox.height);
+    }
+
+    const bounds = {
+      x: minX,
+      y: minY,
+      width: maxX - minX,
+      height: maxY - minY,
     };
+
+    this.log.info("getContentBounds", bounds);
+    this.log.exit("getContentBounds");
+
+    return bounds;
   }
 
   /**
-   * Resize canvas
+   * Set grid settings
    */
-  resize(width, height) {
-    if (width) this.svgElement.setAttribute("width", width);
-    if (height) this.svgElement.setAttribute("height", height);
+  setGrid(enabled, size, visible) {
+    this.log.enter("setGrid", { enabled, size, visible });
 
-    this._render();
-    this.emit("canvas:resized", { width, height });
+    if (enabled !== undefined) this.grid.enabled = enabled;
+    if (size !== undefined) this.grid.size = size;
+    if (visible !== undefined) this.grid.visible = visible;
+
+    this.renderGrid();
+
+    this.log.info("setGrid", "✓ Grid settings updated");
+    this.log.exit("setGrid");
   }
 
   /**
-   * Export canvas as SVG
+   * Get SVG element
+   */
+  getSVG() {
+    return this.svg;
+  }
+
+  /**
+   * Get node layer
+   */
+  getNodeLayer() {
+    return this.nodeLayer;
+  }
+
+  /**
+   * Get edge layer
+   */
+  getEdgeLayer() {
+    return this.edgeLayer;
+  }
+
+  /**
+   * Get overlay layer
+   */
+  getOverlayLayer() {
+    return this.overlayLayer;
+  }
+
+  /**
+   * Export as SVG string
    */
   exportSVG() {
-    return this.svgElement.outerHTML;
+    this.log.enter("exportSVG");
+
+    const serializer = new XMLSerializer();
+    const svgString = serializer.serializeToString(this.svg);
+
+    this.log.info(
+      "exportSVG",
+      `✓ Exported SVG (${svgString.length} characters)`
+    );
+    this.log.exit("exportSVG");
+
+    return svgString;
   }
 
   /**
-   * Emit custom event
+   * Export as image (PNG/JPG)
    */
-  emit(event, data) {
-    const customEvent = new CustomEvent(event, { detail: data });
-    this.svgElement.dispatchEvent(customEvent);
+  async exportImage(format = "png") {
+    this.log.enter("exportImage", { format });
+
+    return new Promise((resolve, reject) => {
+      try {
+        const svgString = this.exportSVG();
+        const blob = new Blob([svgString], { type: "image/svg+xml" });
+        const url = URL.createObjectURL(blob);
+
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = this.svg.clientWidth;
+          canvas.height = this.svg.clientHeight;
+
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0);
+
+          canvas.toBlob((blob) => {
+            const imageUrl = URL.createObjectURL(blob);
+            URL.revokeObjectURL(url);
+
+            this.log.info("exportImage", `✓ Exported as ${format}`);
+            this.log.exit("exportImage");
+
+            resolve(imageUrl);
+          }, `image/${format}`);
+        };
+
+        img.onerror = (error) => {
+          this.log.error("exportImage", "Failed to export image", error);
+          this.log.exit("exportImage");
+          reject(error);
+        };
+
+        img.src = url;
+      } catch (error) {
+        this.log.error("exportImage", "Failed to export image", error);
+        this.log.exit("exportImage");
+        reject(error);
+      }
+    });
   }
 
   /**
-   * Get layer
+   * Clear canvas (remove all nodes and edges)
    */
-  getLayer(name) {
-    return this.layers[name];
+  clear() {
+    this.log.enter("clear");
+
+    this.nodeLayer.innerHTML = "";
+    this.edgeLayer.innerHTML = "";
+    this.overlayLayer.innerHTML = "";
+
+    this.log.info("clear", "✓ Canvas cleared");
+    this.log.exit("clear");
   }
 
   /**
-   * Destroy editor
+   * Create arrow marker for edges
+   */
+  createArrowMarker() {
+    this.log.enter("createArrowMarker");
+
+    const marker = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "marker"
+    );
+    marker.setAttribute("id", "arrowhead");
+    marker.setAttribute("markerWidth", "10");
+    marker.setAttribute("markerHeight", "10");
+    marker.setAttribute("refX", "9");
+    marker.setAttribute("refY", "3");
+    marker.setAttribute("orient", "auto");
+    marker.setAttribute("markerUnits", "strokeWidth");
+
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", "M0,0 L0,6 L9,3 z");
+    path.setAttribute("fill", "#757575");
+
+    marker.appendChild(path);
+    this.defsLayer.appendChild(marker);
+
+    this.log.info("createArrowMarker", "✓ Arrow marker created");
+    this.log.exit("createArrowMarker");
+  }
+
+  /**
+   * Destroy editor and cleanup
    */
   destroy() {
+    this.log.enter("destroy");
+
     // Remove event listeners
-    window.removeEventListener("keydown", this._handleKeyDown);
-    window.removeEventListener("keyup", this._handleKeyUp);
+    this.svg.removeEventListener("wheel", this.handleWheel);
+    this.svg.removeEventListener("mousedown", this.handleMouseDown);
+    this.svg.removeEventListener("mousemove", this.handleMouseMove);
+    this.svg.removeEventListener("mouseup", this.handleMouseUp);
+    this.svg.removeEventListener("mouseleave", this.handleMouseLeave);
+    this.svg.removeEventListener("click", this.handleClick);
+    this.svg.removeEventListener("contextmenu", this.handleContextMenu);
+    this.svg.removeEventListener("dragover", this.handleDragOver);
+    this.svg.removeEventListener("drop", this.handleDrop);
 
-    // Remove all custom event listeners
-    for (const [event, handlers] of this.handlers) {
-      handlers.forEach(({ handler, options }) => {
-        this.svgElement.removeEventListener(event, handler, options);
-      });
+    // Remove SVG from DOM
+    if (this.svg && this.svg.parentNode) {
+      this.svg.parentNode.removeChild(this.svg);
     }
-    this.handlers.clear();
 
-    // Remove canvas
-    if (this.svgElement && this.svgElement.parentNode) {
-      this.svgElement.parentNode.removeChild(this.svgElement);
-    }
-
-    this.emit("editor:destroyed");
+    this.log.info("destroy", "✓ Editor destroyed");
+    this.log.exit("destroy");
   }
 }

@@ -1,0 +1,62 @@
+{
+  "id": "arrows-curved-arrow",
+  "name": "Curved Arrow",
+  "type": "curved-arrow",
+  "category": "arrows",
+  "description": "Curved arrow shape with arrowhead for representing curved flow or directional relationships",
+  "icon": "preview.svg",
+  "iconSvg": "<path d=\"M 2 30 Q 18 6 30 30\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"/><path d=\"M 25 24 L 30 30 L 27 34\" fill=\"currentColor\"/>",
+  "tags": ["arrow", "curved", "flow", "direction", "connector"],
+  
+  "defaultSize": {
+    "width": 120,
+    "height": 80
+  },
+  
+  "defaultStyle": {
+    "fill": "none",
+    "stroke": "#000000",
+    "strokeWidth": 3,
+    "opacity": 1,
+    "textColor": "#000000"
+  },
+  
+  "ports": {
+    "enabled": true,
+    "preset": "start-end",
+    "positions": [
+      { "id": "start", "x": 0, "y": 1, "type": "input", "direction": "left" },
+      { "id": "end", "x": 1, "y": 1, "type": "output", "direction": "right" }
+    ]
+  },
+  
+  "handles": {
+    "enabled": true,
+    "preset": "corners-only",
+    "positions": ["nw", "ne", "se", "sw"]
+  },
+  
+  "constraints": {
+    "minWidth": 60,
+    "minHeight": 40,
+    "maxWidth": 1000,
+    "maxHeight": 1000,
+    "aspectRatio": null
+  },
+  
+  "features": {
+    "resizable": true,
+    "rotatable": false,
+    "connectable": true,
+    "groupable": true,
+    "lockable": true,
+    "clonable": true
+  },
+  
+  "metadata": {
+    "version": "1.0.0",
+    "author": "System",
+    "created": "2025-01-01",
+    "updated": "2025-01-01"
+  }
+}

@@ -186,88 +186,94 @@ export class ShapeLoader {
   }
 
   /**
-   * Load built-in shapes (basic, flowchart, network, etc.)
-   * @param {string} basePath - Base path to shapes library
+   * Load built-in shapes from JSON configuration file
+   * @param {string} configPath - Path to shapes configuration JSON file
    * @returns {Promise<Object>}
    */
-  async loadBuiltInShapes(basePath = "/src/shapes/library") {
-    this.log.enter("loadBuiltInShapes", { basePath });
+  async loadBuiltInShapes(configPath = "/src/shapes/loader/shapes.json") {
+    this.log.enter("loadBuiltInShapes", { configPath });
 
-    // This config object just defines the library structure
-    const libraryConfig = {
-      basic: [
-        {
-          type: "basic-circle",
-          modulePath: `${basePath}/basic/circle/CircleShape.js`,
-          configPath: `${basePath}/basic/circle/config.json`,
-        },
-        {
-          type: "basic-rect",
-          modulePath: `${basePath}/basic/rect/RectShape.js`,
-          configPath: `${basePath}/basic/rect/config.json`,
-        },
-        {
-          type: "basic-diamond",
-          modulePath: `${basePath}/basic/diamond/DiamondShape.js`,
-          configPath: `${basePath}/basic/diamond/config.json`,
-        },
-        {
-          type: "basic-ellipse",
-          modulePath: `${basePath}/basic/ellipse/EllipseShape.js`,
-          configPath: `${basePath}/basic/ellipse/config.json`,
-        },
-        {
-          type: "basic-triangle",
-          modulePath: `${basePath}/basic/triangle/TriangleShape.js`,
-          configPath: `${basePath}/basic/triangle/config.json`,
-        },
-      ],
+    try {
+      // Load the shapes configuration file
+      this.log.debug(`Loading shapes configuration from: ${configPath}`);
+      const response = await fetch(configPath);
 
-      flowchart: [
-        {
-          type: "flowchart-process",
-          modulePath: `${basePath}/flowchart/process/ProcessShape.js`,
-          configPath: `${basePath}/flowchart/process/config.json`,
-        },
-        {
-          type: "flowchart-decision",
-          modulePath: `${basePath}/flowchart/decision/DecisionShape.js`,
-          configPath: `${basePath}/flowchart/decision/config.json`,
-        },
-        {
-          type: "flowchart-terminator",
-          modulePath: `${basePath}/flowchart/terminator/TerminatorShape.js`,
-          configPath: `${basePath}/flowchart/terminator/config.json`,
-        },
-        {
-          type: "flowchart-data",
-          modulePath: `${basePath}/flowchart/data/DataShape.js`,
-          configPath: `${basePath}/flowchart/data/config.json`,
-        },
-        {
-          type: "flowchart-document",
-          modulePath: `${basePath}/flowchart/document/DocumentShape.js`,
-          configPath: `${basePath}/flowchart/document/config.json`,
-        },
-      ],
+      if (!response.ok) {
+        throw new Error(
+          `Failed to load shapes configuration: ${response.statusText}`
+        );
+      }
 
-      network: [
-        {
-          type: "network-server",
-          modulePath: `${basePath}/network/server/ServerShape.js`,
-          configPath: `${basePath}/network/server/config.json`,
-        },
-        {
-          type: "network-router",
-          modulePath: `${basePath}/network/router/RouterShape.js`,
-          configPath: `${basePath}/network/router/config.json`,
-        },
-      ],
-    };
+      const shapesConfig = await response.json();
+      this.log.info(
+        `Shapes configuration loaded: version ${shapesConfig.version}`
+      );
 
-    const result = await this.loadLibrary(libraryConfig);
-    this.log.exit("loadBuiltInShapes", result);
-    return result;
+      // Use basePath from config or fallback to parameter
+      const basePath = shapesConfig.basePath || "/src/shapes/library";
+
+      // Convert JSON format to libraryConfig format
+      const libraryConfig = this._convertToLibraryConfig(
+        shapesConfig.categories,
+        basePath
+      );
+
+      this.log.debug("Converted configuration to library format", {
+        categories: Object.keys(libraryConfig),
+        totalShapes: Object.values(libraryConfig).reduce(
+          (sum, shapes) => sum + shapes.length,
+          0
+        ),
+      });
+
+      // Load shapes using existing loadLibrary method
+      const result = await this.loadLibrary(libraryConfig);
+
+      this.log.exit("loadBuiltInShapes", result);
+      return result;
+    } catch (error) {
+      this.log.error("Failed to load built-in shapes:", error);
+
+      if (this.throwOnError) {
+        throw error;
+      }
+
+      // Return empty result on error
+      return {
+        totalCategories: 0,
+        totalShapes: 0,
+        loaded: 0,
+        failed: 0,
+        categories: {},
+      };
+    }
+  }
+
+  /**
+   * Convert shapes.json format to internal libraryConfig format
+   * @private
+   * @param {Object} categories - Categories object from shapes.json
+   * @param {string} basePath - Base path for shape files
+   * @returns {Object} libraryConfig object
+   */
+  _convertToLibraryConfig(categories, basePath) {
+    this.log.enter("_convertToLibraryConfig", { basePath });
+
+    const libraryConfig = {};
+
+    for (const [categoryKey, shapes] of Object.entries(categories)) {
+      libraryConfig[categoryKey] = shapes.map((shape) => ({
+        type: shape.type,
+        modulePath: `${basePath}/${shape.module}`,
+        configPath: `${basePath}/${shape.config}`,
+      }));
+    }
+
+    this.log.exit("_convertToLibraryConfig", {
+      categories: Object.keys(libraryConfig).length,
+    });
+
+    return libraryConfig;
   }
 
   /**
@@ -471,12 +477,19 @@ export class ShapeLoader {
    * @private
    */
   _getShapeClassName(type) {
-    // Convert 'flowchart-process' to 'ProcessShape'
+    // Split by hyphen: 'flowchart-manual-input' -> ['flowchart', 'manual', 'input']
     const parts = type.split("-");
-    const className = parts[parts.length - 1]
-      .split("_")
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join("");
+
+    // Skip first part (category) and take the rest as the shape name
+    // Join remaining parts with proper casing
+    const nameParts = parts.slice(1); // Remove category prefix
+
+    const className = nameParts
+      .map((part) => {
+        // Capitalize first letter of each part
+        return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+      })
+      .join(""); // Join without separator for PascalCase
 
     return `${className}Shape`;
   }

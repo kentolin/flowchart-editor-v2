@@ -13,12 +13,20 @@
  */
 
 import { EdgeModel } from "../models/EdgeModel.js";
+import { DebugLogger } from "../../utils/debug/DebugLogger.js";
 
 export class EdgeManager {
-  constructor(eventBus, stateManager, nodeManager) {
-    this.eventBus = eventBus;
-    this.stateManager = stateManager;
+  constructor(editor, nodeManager, eventBus) {
+    // Initialize debug logger
+    this.log = new DebugLogger("EdgeManager", "#9C27B0");
+    this.log.enter("constructor");
+
+    this.editor = editor;
     this.nodeManager = nodeManager;
+    this.eventBus = eventBus;
+
+    // Note: StateManager is accessed via editor if needed
+    this.stateManager = null; // Will be set if needed
 
     // Edge storage
     this.edges = new Map(); // edgeId -> EdgeModel
@@ -34,6 +42,9 @@ export class EdgeManager {
     this.connectionRules = new Map();
 
     this._setupEventListeners();
+
+    this.log.info("constructor", "✓ EdgeManager initialized");
+    this.log.exit("constructor");
   }
 
   /**
@@ -41,15 +52,28 @@ export class EdgeManager {
    * @private
    */
   _setupEventListeners() {
+    this.log.enter("_setupEventListeners");
+
     // When a node is deleted, remove all connected edges
     this.eventBus.on("node:deleted", ({ nodeId }) => {
+      this.log.info(
+        "_setupEventListeners",
+        `Node '${nodeId}' deleted, removing connected edges`
+      );
       this.deleteEdgesForNode(nodeId);
     });
 
     // When a node moves, update edge paths
     this.eventBus.on("node:moved", ({ nodeId }) => {
+      this.log.info(
+        "_setupEventListeners",
+        `Node '${nodeId}' moved, updating edge paths`
+      );
       this.updateEdgesForNode(nodeId);
     });
+
+    this.log.info("_setupEventListeners", "✓ Event listeners registered");
+    this.log.exit("_setupEventListeners");
   }
 
   /**
@@ -58,22 +82,33 @@ export class EdgeManager {
    * @returns {string} - Created edge ID
    */
   createEdge(data) {
+    this.log.enter("createEdge", {
+      sourceId: data.sourceId,
+      targetId: data.targetId,
+    });
+
     try {
       // Validate source and target nodes exist
       if (!this.nodeManager.hasNode(data.sourceId)) {
+        this.log.error("createEdge", `Source node ${data.sourceId} not found`);
         throw new Error(`Source node ${data.sourceId} not found`);
       }
       if (!this.nodeManager.hasNode(data.targetId)) {
+        this.log.error("createEdge", `Target node ${data.targetId} not found`);
         throw new Error(`Target node ${data.targetId} not found`);
       }
 
+      this.log.info("createEdge", "Source and target nodes validated");
+
       // Validate connection rules
       if (!this._validateConnection(data.sourceId, data.targetId)) {
+        this.log.error("createEdge", "Connection not allowed by rules");
         throw new Error("Connection not allowed by rules");
       }
 
       // Generate ID if not provided
       const edgeId = data.id || this._generateEdgeId();
+      this.log.info("createEdge", `Generated edge ID: ${edgeId}`);
 
       // Create edge model
       const edgeData = {
@@ -91,9 +126,14 @@ export class EdgeManager {
       };
 
       const edge = new EdgeModel(edgeData);
+      this.log.info("createEdge", `Created EdgeModel instance`);
 
       // Store edge
       this.edges.set(edgeId, edge);
+      this.log.info(
+        "createEdge",
+        `Stored edge in map (total: ${this.edges.size})`
+      );
 
       // Track by nodes
       this._addEdgeToNodeTracking(edgeId, data.sourceId, data.targetId);
@@ -101,6 +141,10 @@ export class EdgeManager {
       // Track by type
       if (!this.edgesByType.has(edgeData.type)) {
         this.edgesByType.set(edgeData.type, new Set());
+        this.log.info(
+          "createEdge",
+          `Created new type set for '${edgeData.type}'`
+        );
       }
       this.edgesByType.get(edgeData.type).add(edgeId);
 
@@ -110,15 +154,19 @@ export class EdgeManager {
       // Emit events
       this.eventBus.emit("edge:created", {
         edgeId,
-        edge: edge.serialize(),
+        edge: edge.toJSON(),
         sourceId: data.sourceId,
         targetId: data.targetId,
       });
 
+      this.log.info("createEdge", `✓ Edge '${edgeId}' created successfully`);
+      this.log.exit("createEdge");
+
       return edgeId;
     } catch (error) {
-      console.error("Error creating edge:", error);
+      this.log.error("createEdge", "Failed to create edge:", error);
       this.eventBus.emit("edge:error", { operation: "create", error });
+      this.log.exit("createEdge");
       throw error;
     }
   }
@@ -129,16 +177,26 @@ export class EdgeManager {
    * @returns {Array} - Array of created edge IDs
    */
   createEdges(edgesData) {
-    return edgesData
+    this.log.enter("createEdges", { count: edgesData.length });
+
+    const edgeIds = edgesData
       .map((data) => {
         try {
           return this.createEdge(data);
         } catch (error) {
-          console.error("Error creating edge:", error);
+          this.log.error("createEdges", "Failed to create edge:", error);
           return null;
         }
       })
       .filter(Boolean);
+
+    this.log.info(
+      "createEdges",
+      `✓ Created ${edgeIds.length}/${edgesData.length} edges`
+    );
+    this.log.exit("createEdges");
+
+    return edgeIds;
   }
 
   /**
@@ -147,7 +205,18 @@ export class EdgeManager {
    * @returns {EdgeModel|null}
    */
   getEdge(edgeId) {
-    return this.edges.get(edgeId) || null;
+    this.log.enter("getEdge", { edgeId });
+
+    const edge = this.edges.get(edgeId) || null;
+
+    if (edge) {
+      this.log.info("getEdge", `Found edge '${edgeId}'`);
+    } else {
+      this.log.warn("getEdge", `Edge '${edgeId}' not found`);
+    }
+
+    this.log.exit("getEdge");
+    return edge;
   }
 
   /**
@@ -156,7 +225,17 @@ export class EdgeManager {
    * @returns {Array}
    */
   getEdges(edgeIds) {
-    return edgeIds.map((id) => this.getEdge(id)).filter(Boolean);
+    this.log.enter("getEdges", { count: edgeIds.length });
+
+    const edges = edgeIds.map((id) => this.getEdge(id)).filter(Boolean);
+
+    this.log.info(
+      "getEdges",
+      `Retrieved ${edges.length}/${edgeIds.length} edges`
+    );
+    this.log.exit("getEdges");
+
+    return edges;
   }
 
   /**
@@ -164,7 +243,14 @@ export class EdgeManager {
    * @returns {Array}
    */
   getAllEdges() {
-    return Array.from(this.edges.values());
+    this.log.enter("getAllEdges");
+
+    const edges = Array.from(this.edges.values());
+
+    this.log.info("getAllEdges", `Returning ${edges.length} edges`);
+    this.log.exit("getAllEdges");
+
+    return edges;
   }
 
   /**
@@ -173,12 +259,26 @@ export class EdgeManager {
    * @returns {Array}
    */
   getEdgesByType(type) {
-    const edgeIds = this.edgesByType.get(type);
-    if (!edgeIds) return [];
+    this.log.enter("getEdgesByType", { type });
 
-    return Array.from(edgeIds)
+    const edgeIds = this.edgesByType.get(type);
+    if (!edgeIds) {
+      this.log.info("getEdgesByType", `No edges of type '${type}'`);
+      this.log.exit("getEdgesByType");
+      return [];
+    }
+
+    const edges = Array.from(edgeIds)
       .map((id) => this.getEdge(id))
       .filter(Boolean);
+
+    this.log.info(
+      "getEdgesByType",
+      `Found ${edges.length} edges of type '${type}'`
+    );
+    this.log.exit("getEdgesByType");
+
+    return edges;
   }
 
   /**
@@ -187,12 +287,26 @@ export class EdgeManager {
    * @returns {Array}
    */
   getEdgesForNode(nodeId) {
-    const edgeIds = this.edgesByNode.get(nodeId);
-    if (!edgeIds) return [];
+    this.log.enter("getEdgesForNode", { nodeId });
 
-    return Array.from(edgeIds)
+    const edgeIds = this.edgesByNode.get(nodeId);
+    if (!edgeIds) {
+      this.log.info("getEdgesForNode", `No edges for node '${nodeId}'`);
+      this.log.exit("getEdgesForNode");
+      return [];
+    }
+
+    const edges = Array.from(edgeIds)
       .map((id) => this.getEdge(id))
       .filter(Boolean);
+
+    this.log.info(
+      "getEdgesForNode",
+      `Found ${edges.length} edges for node '${nodeId}'`
+    );
+    this.log.exit("getEdgesForNode");
+
+    return edges;
   }
 
   /**
@@ -201,9 +315,16 @@ export class EdgeManager {
    * @returns {Array}
    */
   getIncomingEdges(nodeId) {
-    return this.getEdgesForNode(nodeId).filter(
+    this.log.enter("getIncomingEdges", { nodeId });
+
+    const edges = this.getEdgesForNode(nodeId).filter(
       (edge) => edge.targetId === nodeId
     );
+
+    this.log.info("getIncomingEdges", `Found ${edges.length} incoming edges`);
+    this.log.exit("getIncomingEdges");
+
+    return edges;
   }
 
   /**
@@ -212,9 +333,16 @@ export class EdgeManager {
    * @returns {Array}
    */
   getOutgoingEdges(nodeId) {
-    return this.getEdgesForNode(nodeId).filter(
+    this.log.enter("getOutgoingEdges", { nodeId });
+
+    const edges = this.getEdgesForNode(nodeId).filter(
       (edge) => edge.sourceId === nodeId
     );
+
+    this.log.info("getOutgoingEdges", `Found ${edges.length} outgoing edges`);
+    this.log.exit("getOutgoingEdges");
+
+    return edges;
   }
 
   /**
@@ -224,12 +352,22 @@ export class EdgeManager {
    * @returns {EdgeModel|null}
    */
   getEdgeBetweenNodes(sourceId, targetId) {
+    this.log.enter("getEdgeBetweenNodes", { sourceId, targetId });
+
     const edges = this.getEdgesForNode(sourceId);
-    return (
+    const edge =
       edges.find(
         (edge) => edge.sourceId === sourceId && edge.targetId === targetId
-      ) || null
-    );
+      ) || null;
+
+    if (edge) {
+      this.log.info("getEdgeBetweenNodes", `Found edge '${edge.id}'`);
+    } else {
+      this.log.info("getEdgeBetweenNodes", "No edge found between nodes");
+    }
+
+    this.log.exit("getEdgeBetweenNodes");
+    return edge;
   }
 
   /**
@@ -239,12 +377,19 @@ export class EdgeManager {
    * @returns {Array}
    */
   getAllEdgesBetweenNodes(nodeId1, nodeId2) {
+    this.log.enter("getAllEdgesBetweenNodes", { nodeId1, nodeId2 });
+
     const edges1 = this.getEdgesForNode(nodeId1);
-    return edges1.filter(
+    const edges = edges1.filter(
       (edge) =>
         (edge.sourceId === nodeId1 && edge.targetId === nodeId2) ||
         (edge.sourceId === nodeId2 && edge.targetId === nodeId1)
     );
+
+    this.log.info("getAllEdgesBetweenNodes", `Found ${edges.length} edges`);
+    this.log.exit("getAllEdgesBetweenNodes");
+
+    return edges;
   }
 
   /**
@@ -253,7 +398,9 @@ export class EdgeManager {
    * @returns {boolean}
    */
   hasEdge(edgeId) {
-    return this.edges.has(edgeId);
+    const exists = this.edges.has(edgeId);
+    this.log.info("hasEdge", `Edge '${edgeId}' exists: ${exists}`);
+    return exists;
   }
 
   /**
@@ -263,7 +410,9 @@ export class EdgeManager {
    * @returns {boolean}
    */
   hasConnection(sourceId, targetId) {
-    return this.getEdgeBetweenNodes(sourceId, targetId) !== null;
+    const exists = this.getEdgeBetweenNodes(sourceId, targetId) !== null;
+    this.log.info("hasConnection", `Connection exists: ${exists}`);
+    return exists;
   }
 
   /**
@@ -272,9 +421,12 @@ export class EdgeManager {
    * @param {Object} updates - Properties to update
    */
   updateEdge(edgeId, updates) {
+    this.log.enter("updateEdge", { edgeId, updates });
+
     const edge = this.getEdge(edgeId);
     if (!edge) {
-      console.warn(`Edge ${edgeId} not found`);
+      this.log.warn("updateEdge", `Edge ${edgeId} not found`);
+      this.log.exit("updateEdge");
       return false;
     }
 
@@ -285,6 +437,11 @@ export class EdgeManager {
         oldValues[key] = edge[key];
       });
 
+      this.log.info(
+        "updateEdge",
+        `Updating properties: ${Object.keys(updates).join(", ")}`
+      );
+
       // Handle source/target changes
       if (updates.sourceId || updates.targetId) {
         const newSourceId = updates.sourceId || edge.sourceId;
@@ -292,6 +449,7 @@ export class EdgeManager {
 
         // Validate new connection
         if (!this._validateConnection(newSourceId, newTargetId)) {
+          this.log.error("updateEdge", "New connection not allowed by rules");
           throw new Error("New connection not allowed by rules");
         }
 
@@ -305,6 +463,10 @@ export class EdgeManager {
 
       // Update type tracking if type changed
       if (updates.type && updates.type !== oldValues.type) {
+        this.log.info(
+          "updateEdge",
+          `Type changed from '${oldValues.type}' to '${updates.type}'`
+        );
         this._updateEdgeTypeTracking(edgeId, oldValues.type, updates.type);
       }
 
@@ -316,13 +478,17 @@ export class EdgeManager {
         edgeId,
         updates,
         oldValues,
-        edge: edge.serialize(),
+        edge: edge.toJSON(),
       });
+
+      this.log.info("updateEdge", `✓ Edge '${edgeId}' updated`);
+      this.log.exit("updateEdge");
 
       return true;
     } catch (error) {
-      console.error("Error updating edge:", error);
+      this.log.error("updateEdge", "Failed to update edge:", error);
       this.eventBus.emit("edge:error", { operation: "update", edgeId, error });
+      this.log.exit("updateEdge");
       return false;
     }
   }
@@ -334,7 +500,12 @@ export class EdgeManager {
    * @param {*} value - New value
    */
   updateEdgeProperty(edgeId, property, value) {
-    return this.updateEdge(edgeId, { [property]: value });
+    this.log.enter("updateEdgeProperty", { edgeId, property, value });
+
+    const result = this.updateEdge(edgeId, { [property]: value });
+
+    this.log.exit("updateEdgeProperty");
+    return result;
   }
 
   /**
@@ -343,15 +514,18 @@ export class EdgeManager {
    * @returns {boolean}
    */
   deleteEdge(edgeId) {
+    this.log.enter("deleteEdge", { edgeId });
+
     const edge = this.getEdge(edgeId);
     if (!edge) {
-      console.warn(`Edge ${edgeId} not found`);
+      this.log.warn("deleteEdge", `Edge ${edgeId} not found`);
+      this.log.exit("deleteEdge");
       return false;
     }
 
     try {
       // Store edge data for undo
-      const edgeData = edge.serialize();
+      const edgeData = edge.toJSON();
 
       // Remove from node tracking
       this._removeEdgeFromNodeTracking(edgeId, edge.sourceId, edge.targetId);
@@ -360,10 +534,18 @@ export class EdgeManager {
       const typeSet = this.edgesByType.get(edge.type);
       if (typeSet) {
         typeSet.delete(edgeId);
+        this.log.info(
+          "deleteEdge",
+          `Removed from type '${edge.type}' tracking`
+        );
       }
 
       // Remove edge
       this.edges.delete(edgeId);
+      this.log.info(
+        "deleteEdge",
+        `Removed from edges map (remaining: ${this.edges.size})`
+      );
 
       // Update state
       this._updateState();
@@ -374,10 +556,14 @@ export class EdgeManager {
         edgeData,
       });
 
+      this.log.info("deleteEdge", `✓ Edge '${edgeId}' deleted`);
+      this.log.exit("deleteEdge");
+
       return true;
     } catch (error) {
-      console.error("Error deleting edge:", error);
+      this.log.error("deleteEdge", "Failed to delete edge:", error);
       this.eventBus.emit("edge:error", { operation: "delete", edgeId, error });
+      this.log.exit("deleteEdge");
       return false;
     }
   }
@@ -388,6 +574,8 @@ export class EdgeManager {
    * @returns {Array} - Successfully deleted edge IDs
    */
   deleteEdges(edgeIds) {
+    this.log.enter("deleteEdges", { count: edgeIds.length });
+
     const deleted = [];
 
     edgeIds.forEach((edgeId) => {
@@ -395,6 +583,12 @@ export class EdgeManager {
         deleted.push(edgeId);
       }
     });
+
+    this.log.info(
+      "deleteEdges",
+      `✓ Deleted ${deleted.length}/${edgeIds.length} edges`
+    );
+    this.log.exit("deleteEdges");
 
     return deleted;
   }
@@ -405,8 +599,18 @@ export class EdgeManager {
    * @returns {Array} - Deleted edge IDs
    */
   deleteEdgesForNode(nodeId) {
+    this.log.enter("deleteEdgesForNode", { nodeId });
+
     const edgeIds = Array.from(this.edgesByNode.get(nodeId) || []);
-    return this.deleteEdges(edgeIds);
+    const deleted = this.deleteEdges(edgeIds);
+
+    this.log.info(
+      "deleteEdgesForNode",
+      `✓ Deleted ${deleted.length} edges for node '${nodeId}'`
+    );
+    this.log.exit("deleteEdgesForNode");
+
+    return deleted;
   }
 
   /**
@@ -414,6 +618,8 @@ export class EdgeManager {
    * @param {string} nodeId - Node identifier
    */
   updateEdgesForNode(nodeId) {
+    this.log.enter("updateEdgesForNode", { nodeId });
+
     const edges = this.getEdgesForNode(nodeId);
 
     edges.forEach((edge) => {
@@ -423,13 +629,19 @@ export class EdgeManager {
         targetId: edge.targetId,
       });
     });
+
+    this.log.info("updateEdgesForNode", `✓ Updated ${edges.length} edge paths`);
+    this.log.exit("updateEdgesForNode");
   }
 
   /**
    * Clear all edges
    */
   clearAll() {
+    this.log.enter("clearAll");
+
     const edgeIds = Array.from(this.edges.keys());
+    const count = edgeIds.length;
 
     edgeIds.forEach((edgeId) => {
       this.deleteEdge(edgeId);
@@ -443,6 +655,9 @@ export class EdgeManager {
     this._updateState();
 
     this.eventBus.emit("edges:cleared");
+
+    this.log.info("clearAll", `✓ Cleared ${count} edges`);
+    this.log.exit("clearAll");
   }
 
   /**
@@ -450,6 +665,8 @@ export class EdgeManager {
    * @returns {Object}
    */
   getStats() {
+    this.log.enter("getStats");
+
     const typeStats = {};
 
     this.edgesByType.forEach((edgeIds, type) => {
@@ -461,12 +678,22 @@ export class EdgeManager {
       nodeStats[nodeId] = edgeIds.size;
     });
 
-    return {
+    const stats = {
       totalEdges: this.edges.size,
       byType: typeStats,
       byNode: nodeStats,
       nextId: this.nextEdgeId,
     };
+
+    this.log.info(
+      "getStats",
+      `Total edges: ${stats.totalEdges}, Types: ${
+        Object.keys(typeStats).length
+      }`
+    );
+    this.log.exit("getStats");
+
+    return stats;
   }
 
   /**
@@ -475,7 +702,14 @@ export class EdgeManager {
    * @returns {Array}
    */
   findEdges(predicate) {
-    return this.getAllEdges().filter(predicate);
+    this.log.enter("findEdges");
+
+    const edges = this.getAllEdges().filter(predicate);
+
+    this.log.info("findEdges", `Found ${edges.length} matching edges`);
+    this.log.exit("findEdges");
+
+    return edges;
   }
 
   /**
@@ -492,7 +726,12 @@ export class EdgeManager {
    * @param {Function} validator - Validation function (sourceId, targetId) => boolean
    */
   addConnectionRule(ruleId, validator) {
+    this.log.enter("addConnectionRule", { ruleId });
+
     this.connectionRules.set(ruleId, validator);
+
+    this.log.info("addConnectionRule", `✓ Added rule '${ruleId}'`);
+    this.log.exit("addConnectionRule");
   }
 
   /**
@@ -500,7 +739,12 @@ export class EdgeManager {
    * @param {string} ruleId - Rule identifier
    */
   removeConnectionRule(ruleId) {
+    this.log.enter("removeConnectionRule", { ruleId });
+
     this.connectionRules.delete(ruleId);
+
+    this.log.info("removeConnectionRule", `✓ Removed rule '${ruleId}'`);
+    this.log.exit("removeConnectionRule");
   }
 
   /**
@@ -508,8 +752,12 @@ export class EdgeManager {
    * @private
    */
   _validateConnection(sourceId, targetId) {
+    this.log.enter("_validateConnection", { sourceId, targetId });
+
     // Don't allow self-loops by default
     if (sourceId === targetId) {
+      this.log.warn("_validateConnection", "Self-loops not allowed");
+      this.log.exit("_validateConnection");
       return false;
     }
 
@@ -517,13 +765,24 @@ export class EdgeManager {
     for (const [ruleId, validator] of this.connectionRules) {
       try {
         if (!validator(sourceId, targetId)) {
+          this.log.warn(
+            "_validateConnection",
+            `Rule '${ruleId}' rejected connection`
+          );
+          this.log.exit("_validateConnection");
           return false;
         }
       } catch (error) {
-        console.error(`Error in connection rule '${ruleId}':`, error);
+        this.log.error(
+          "_validateConnection",
+          `Error in rule '${ruleId}':`,
+          error
+        );
       }
     }
 
+    this.log.info("_validateConnection", "✓ Connection validated");
+    this.log.exit("_validateConnection");
     return true;
   }
 
@@ -533,37 +792,61 @@ export class EdgeManager {
    * @returns {Array} - Array of {x, y} points
    */
   calculateEdgePath(edgeId) {
+    this.log.enter("calculateEdgePath", { edgeId });
+
     const edge = this.getEdge(edgeId);
-    if (!edge) return [];
+    if (!edge) {
+      this.log.warn("calculateEdgePath", `Edge '${edgeId}' not found`);
+      this.log.exit("calculateEdgePath");
+      return [];
+    }
 
     const sourceNode = this.nodeManager.getNode(edge.sourceId);
     const targetNode = this.nodeManager.getNode(edge.targetId);
 
-    if (!sourceNode || !targetNode) return [];
+    if (!sourceNode || !targetNode) {
+      this.log.warn("calculateEdgePath", "Source or target node not found");
+      this.log.exit("calculateEdgePath");
+      return [];
+    }
 
     const sourceBounds = this.nodeManager.getNodeBounds(edge.sourceId);
     const targetBounds = this.nodeManager.getNodeBounds(edge.targetId);
 
+    let points = [];
+
     // Calculate connection points based on edge type
     switch (edge.type) {
       case "straight":
-        return [
+        points = [
           { x: sourceBounds.centerX, y: sourceBounds.centerY },
           { x: targetBounds.centerX, y: targetBounds.centerY },
         ];
+        break;
 
       case "bezier":
-        return this._calculateBezierPath(sourceBounds, targetBounds);
+        points = this._calculateBezierPath(sourceBounds, targetBounds);
+        break;
 
       case "orthogonal":
-        return this._calculateOrthogonalPath(sourceBounds, targetBounds);
+        points = this._calculateOrthogonalPath(sourceBounds, targetBounds);
+        break;
 
       default:
-        return [
+        points = [
           { x: sourceBounds.centerX, y: sourceBounds.centerY },
           { x: targetBounds.centerX, y: targetBounds.centerY },
         ];
+        break;
     }
+
+    this.log.info(
+      "calculateEdgePath",
+      `Calculated ${points.length} points for ${edge.type} path`
+    );
+    this.log.exit("calculateEdgePath");
+
+    return points;
   }
 
   /**
@@ -606,7 +889,9 @@ export class EdgeManager {
    * @private
    */
   _generateEdgeId() {
-    return `edge_${this.nextEdgeId++}`;
+    const id = `edge_${this.nextEdgeId++}`;
+    this.log.info("_generateEdgeId", `Generated ID: ${id}`);
+    return id;
   }
 
   /**
@@ -614,6 +899,8 @@ export class EdgeManager {
    * @private
    */
   _addEdgeToNodeTracking(edgeId, sourceId, targetId) {
+    this.log.enter("_addEdgeToNodeTracking", { edgeId, sourceId, targetId });
+
     // Track for source node
     if (!this.edgesByNode.has(sourceId)) {
       this.edgesByNode.set(sourceId, new Set());
@@ -625,6 +912,9 @@ export class EdgeManager {
       this.edgesByNode.set(targetId, new Set());
     }
     this.edgesByNode.get(targetId).add(edgeId);
+
+    this.log.info("_addEdgeToNodeTracking", "✓ Added to node tracking");
+    this.log.exit("_addEdgeToNodeTracking");
   }
 
   /**
@@ -632,6 +922,12 @@ export class EdgeManager {
    * @private
    */
   _removeEdgeFromNodeTracking(edgeId, sourceId, targetId) {
+    this.log.enter("_removeEdgeFromNodeTracking", {
+      edgeId,
+      sourceId,
+      targetId,
+    });
+
     const sourceSet = this.edgesByNode.get(sourceId);
     if (sourceSet) {
       sourceSet.delete(edgeId);
@@ -641,6 +937,12 @@ export class EdgeManager {
     if (targetSet) {
       targetSet.delete(edgeId);
     }
+
+    this.log.info(
+      "_removeEdgeFromNodeTracking",
+      "✓ Removed from node tracking"
+    );
+    this.log.exit("_removeEdgeFromNodeTracking");
   }
 
   /**
@@ -648,6 +950,8 @@ export class EdgeManager {
    * @private
    */
   _updateEdgeTypeTracking(edgeId, oldType, newType) {
+    this.log.enter("_updateEdgeTypeTracking", { edgeId, oldType, newType });
+
     // Remove from old type
     const oldTypeSet = this.edgesByType.get(oldType);
     if (oldTypeSet) {
@@ -659,6 +963,12 @@ export class EdgeManager {
       this.edgesByType.set(newType, new Set());
     }
     this.edgesByType.get(newType).add(edgeId);
+
+    this.log.info(
+      "_updateEdgeTypeTracking",
+      `✓ Moved edge from type '${oldType}' to '${newType}'`
+    );
+    this.log.exit("_updateEdgeTypeTracking");
   }
 
   /**
@@ -666,6 +976,8 @@ export class EdgeManager {
    * @private
    */
   _updateState() {
+    if (!this.stateManager) return;
+
     this.stateManager.setState("edges", {
       count: this.edges.size,
       byType: Object.fromEntries(
@@ -682,7 +994,14 @@ export class EdgeManager {
    * @returns {Array}
    */
   serialize() {
-    return this.getAllEdges().map((edge) => edge.serialize());
+    this.log.enter("serialize");
+
+    const data = this.getAllEdges().map((edge) => edge.toJSON());
+
+    this.log.info("serialize", `Serialized ${data.length} edges`);
+    this.log.exit("serialize");
+
+    return data;
   }
 
   /**
@@ -690,6 +1009,8 @@ export class EdgeManager {
    * @param {Array} edgesData - Serialized edges
    */
   deserialize(edgesData) {
+    this.log.enter("deserialize", { count: edgesData.length });
+
     // Clear existing edges
     this.clearAll();
 
@@ -698,7 +1019,7 @@ export class EdgeManager {
       try {
         this.createEdge(edgeData);
       } catch (error) {
-        console.error("Error deserializing edge:", error);
+        this.log.error("deserialize", "Failed to deserialize edge:", error);
       }
     });
 
@@ -713,14 +1034,25 @@ export class EdgeManager {
     );
 
     this.nextEdgeId = maxId + 1;
+
+    this.log.info(
+      "deserialize",
+      `✓ Deserialized ${edgesData.length} edges, next ID: ${this.nextEdgeId}`
+    );
+    this.log.exit("deserialize");
   }
 
   /**
    * Clean up resources
    */
   destroy() {
+    this.log.enter("destroy");
+
     this.clearAll();
     this.eventBus.off("node:deleted");
     this.eventBus.off("node:moved");
+
+    this.log.info("destroy", "✓ EdgeManager destroyed");
+    this.log.exit("destroy");
   }
 }

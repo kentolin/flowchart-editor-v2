@@ -5,6 +5,7 @@
   "category": "basic",
   "description": "Basic rectangle shape with optional rounded corners",
   "icon": "preview.svg",
+  "iconSvg": "<rect x=\"2\" y=\"10\" width=\"32\" height=\"16\" rx=\"2\" ry=\"2\"/>",
   "tags": ["basic", "geometric", "rectangle", "box"],
   
   "defaultSize": {

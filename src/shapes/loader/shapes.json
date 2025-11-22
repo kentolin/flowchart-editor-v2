@@ -1,0 +1,210 @@
+{
+  "version": "1.0.0",
+  "basePath": "/src/shapes/library",
+  "categories": {
+    "basic": [
+      {
+        "type": "basic-circle",
+        "module": "basic/circle/CircleShape.js",
+        "config": "basic/circle/config.json"
+      },
+      {
+        "type": "basic-rect",
+        "module": "basic/rect/RectShape.js",
+        "config": "basic/rect/config.json"
+      },
+      {
+        "type": "basic-diamond",
+        "module": "basic/diamond/DiamondShape.js",
+        "config": "basic/diamond/config.json"
+      },
+      {
+        "type": "basic-ellipse",
+        "module": "basic/ellipse/EllipseShape.js",
+        "config": "basic/ellipse/config.json"
+      },
+      {
+        "type": "basic-triangle",
+        "module": "basic/triangle/TriangleShape.js",
+        "config": "basic/triangle/config.json"
+      },
+      {
+        "type": "basic-polygon",
+        "module": "basic/polygon/PolygonShape.js",
+        "config": "basic/polygon/config.json"
+      },
+      {
+        "type": "basic-star",
+        "module": "basic/star/StarShape.js",
+        "config": "basic/star/config.json"
+      }
+    ],
+    "flowchart": [
+      {
+        "type": "flowchart-process",
+        "module": "flowchart/process/ProcessShape.js",
+        "config": "flowchart/process/config.json"
+      },
+      {
+        "type": "flowchart-decision",
+        "module": "flowchart/decision/DecisionShape.js",
+        "config": "flowchart/decision/config.json"
+      },
+      {
+        "type": "flowchart-terminator",
+        "module": "flowchart/terminator/TerminatorShape.js",
+        "config": "flowchart/terminator/config.json"
+      },
+      {
+        "type": "flowchart-data",
+        "module": "flowchart/data/DataShape.js",
+        "config": "flowchart/data/config.json"
+      },
+      {
+        "type": "flowchart-document",
+        "module": "flowchart/document/DocumentShape.js",
+        "config": "flowchart/document/config.json"
+      },
+      {
+        "type": "flowchart-display",
+        "module": "flowchart/display/DisplayShape.js",
+        "config": "flowchart/display/config.json"
+      },
+      {
+        "type": "flowchart-manual-input",
+        "module": "flowchart/manual-input/ManualInputShape.js",
+        "config": "flowchart/manual-input/config.json"
+      },
+      {
+        "type": "flowchart-predefined-process",
+        "module": "flowchart/predefined-process/PredefinedProcessShape.js",
+        "config": "flowchart/predefined-process/config.json"
+      },
+      {
+        "type": "flowchart-preparation",
+        "module": "flowchart/preparation/PreparationShape.js",
+        "config": "flowchart/preparation/config.json"
+      }
+    ],
+    "network": [
+      {
+        "type": "network-server",
+        "module": "network/server/ServerShape.js",
+        "config": "network/server/config.json"
+      },
+      {
+        "type": "network-router",
+        "module": "network/router/RouterShape.js",
+        "config": "network/router/config.json"
+      },
+      {
+        "type": "network-database",
+        "module": "network/database/DatabaseShape.js",
+        "config": "network/database/config.json"
+      },
+      {
+        "type": "network-cloud",
+        "module": "network/cloud/CloudShape.js",
+        "config": "network/cloud/config.json"
+      },
+      {
+        "type": "network-firewall",
+        "module": "network/firewall/FirewallShape.js",
+        "config": "network/firewall/config.json"
+      },
+      {
+        "type": "network-switch",
+        "module": "network/switch/SwitchShape.js",
+        "config": "network/switch/config.json"
+      },
+      {
+        "type": "network-workstation",
+        "module": "network/workstation/WorkstationShape.js",
+        "config": "network/workstation/config.json"
+      }
+    ],
+    "arrows": [
+      {
+        "type": "arrows-straight-arrow",
+        "module": "arrows/straight-arrow/StraightArrowShape.js",
+        "config": "arrows/straight-arrow/config.json"
+      },
+      {
+        "type": "arrows-curved-arrow",
+        "module": "arrows/curved-arrow/CurvedArrowShape.js",
+        "config": "arrows/curved-arrow/config.json"
+      },
+      {
+        "type": "arrows-double-arrow",
+        "module": "arrows/double-arrow/DoubleArrowShape.js",
+        "config": "arrows/double-arrow/config.json"
+      }
+    ],
+    "containers": [
+      {
+        "type": "container-frame",
+        "module": "containers/frame/FrameShape.js",
+        "config": "containers/frame/config.json"
+      },
+      {
+        "type": "container-group",
+        "module": "containers/group/GroupShape.js",
+        "config": "containers/group/config.json"
+      },
+      {
+        "type": "container-swimlane",
+        "module": "containers/swimlane/SwimlaneShape.js",
+        "config": "containers/swimlane/config.json"
+      }
+    ],
+    "text": [
+      {
+        "type": "text-label",
+        "module": "text/label/LabelShape.js",
+        "config": "text/label/config.json"
+      },
+      {
+        "type": "text-note-text",
+        "module": "text/note/NoteTextShape.js",
+        "config": "text/note/config.json"
+      },
+      {
+        "type": "text-callout",
+        "module": "text/callout/CalloutShape.js",
+        "config": "text/callout/config.json"
+      }
+    ],
+    "uml": [
+      {
+        "type": "uml-actor",
+        "module": "uml/actor/ActorShape.js",
+        "config": "uml/actor/config.json"
+      },
+      {
+        "type": "uml-class",
+        "module": "uml/class/ClassShape.js",
+        "config": "uml/class/config.json"
+      },
+      {
+        "type": "uml-component",
+        "module": "uml/component/ComponentShape.js",
+        "config": "uml/component/config.json"
+      },
+      {
+        "type": "uml-interface",
+        "module": "uml/interface/InterfaceShape.js",
+        "config": "uml/interface/config.json"
+      },
+      {
+        "type": "uml-note",
+        "module": "uml/note/NoteShape.js",
+        "config": "uml/note/config.json"
+      },
+      {
+        "type": "uml-package",
+        "module": "uml/package/PackageShape.js",
+        "config": "uml/package/config.json"
+      }
+    ]
+  }
+}

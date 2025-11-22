@@ -1,0 +1,24 @@
+<svg width="36" height="36" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
+  <!-- Server rack units -->
+  <rect x="6" y="2" width="24" height="7" 
+        fill="none" 
+        stroke="#000000" 
+        stroke-width="2"/>
+  <rect x="6" y="10" width="24" height="7" 
+        fill="none" 
+        stroke="#000000" 
+        stroke-width="2"/>
+  <rect x="6" y="18" width="24" height="7" 
+        fill="none" 
+        stroke="#000000" 
+        stroke-width="2"/>
+  <rect x="6" y="26" width="24" height="7" 
+        fill="none" 
+        stroke="#000000" 
+        stroke-width="2"/>
+  <!-- Indicator lights -->
+  <circle cx="10" cy="5.5" r="1" fill="#4caf50"/>
+  <circle cx="10" cy="13.5" r="1" fill="#4caf50"/>
+  <circle cx="10" cy="21.5" r="1" fill="#4caf50"/>
+  <circle cx="10" cy="29.5" r="1" fill="#4caf50"/>
+</svg>

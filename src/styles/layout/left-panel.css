@@ -1,41 +1,370 @@
 /**
- * left-panel.css - Left side panel layout
+ * left-panel.css - Styles for Left Palette
  */
 
+/* Main palette container */
 .left-panel {
-  width: var(--panel-width);
+  width: var(--panel-width, 250px);
+  height: 100%;
+  background: var(--surface);
   border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  font-size: var(--font-size-xs);
+  transition: width 0.2s ease;
+}
+
+/* ===============================
+🔍 Search Header
+=============================== */
+.palette-header {
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--border);
   background: var(--surface);
 }
 
-.left-panel .panel-header {
-  border-bottom: 1px solid var(--border);
+.palette-search {
+  width: 100%;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  background: var(--background);
+  color: var(--text-primary);
+  transition: var(--transition-fast);
 }
 
-.left-panel .panel-content {
+.palette-search:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+}
+
+.palette-search::placeholder {
+  color: #999;
+}
+
+/* ===============================
+📂 Categories Container
+=============================== */
+.palette-categories {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* ===============================
+📁 Category Section
+=============================== */
+.shape-category {
+  margin-bottom: 0;
+}
+
+/* Category Header */
+.category-header {
+  padding: 5px 8px;
+  font-weight: 600;
+  color: #333;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  background: #f3f3f3;
+  border-bottom: 1px solid #e0e0e0;
+  transition: background 0.15s ease;
+}
+
+.category-header:hover {
+  background: #e8e8e8;
+}
+
+/* Triangle icon for collapse */
+.triangle {
+  display: inline-block;
+  margin-right: 6px;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid #666;
+  transform: rotate(-90deg);
+  transition: transform 0.2s ease;
+}
+
+.triangle.open {
+  transform: rotate(0deg);
+}
+
+/* ===============================
+🎨 Shape Grid Layout
+=============================== */
+.shape-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 44px);
+  gap: 3px;
+  padding: 3px 3px 6px;
+  justify-content: center;
+  background: none;
+  max-height: 300px;
+  overflow: hidden;
+  transition: max-height 0.25s ease, opacity 0.25s ease;
+  opacity: 1;
+}
+
+.shape-grid.collapsed {
+  max-height: 0;
+  opacity: 0;
   padding: 0;
 }
 
-/* Responsive */
-@media (max-width: 1024px) {
+/* ===============================
+⬜ Shape Item
+=============================== */
+.shape-item {
+  width: 42px;
+  height: 42px;
+  background: transparent;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  transition: transform 0.12s ease, background 0.15s ease;
+  box-sizing: border-box;
+}
+
+.shape-item:hover {
+  background: rgba(82, 165, 246, 0.12);
+  transform: scale(1.03);
+}
+
+.shape-item:active {
+  cursor: grabbing;
+  transform: scale(0.96);
+}
+
+/* Shape SVG */
+.shape-item svg {
+  width: 36px;
+  height: 36px;
+  fill: none;
+  stroke: #444;
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  pointer-events: none;
+  transition: transform 0.1s ease;
+}
+
+/* ===============================
+🚫 No Results Message
+=============================== */
+.no-results {
+  padding: 20px;
+  text-align: center;
+  color: #999;
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* ===============================
+🖱️ Scrollbar Aesthetics
+=============================== */
+#left-panel::-webkit-scrollbar,
+.left-panel::-webkit-scrollbar,
+.palette-categories::-webkit-scrollbar {
+  width: 6px;
+}
+
+#left-panel::-webkit-scrollbar-thumb,
+.left-panel::-webkit-scrollbar-thumb,
+.palette-categories::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.25);
+  border-radius: 3px;
+}
+
+#left-panel::-webkit-scrollbar-thumb:hover,
+.left-panel::-webkit-scrollbar-thumb:hover,
+.palette-categories::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.35);
+}
+
+#left-panel::-webkit-scrollbar-track,
+.left-panel::-webkit-scrollbar-track,
+.palette-categories::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ===============================
+🎯 Focus States (Accessibility)
+=============================== */
+.shape-item:focus {
+  outline: 2px solid #0078d7;
+  outline-offset: 2px;
+}
+
+.category-header:focus {
+  outline: 2px solid #0078d7;
+  outline-offset: -2px;
+}
+
+/* ===============================
+📱 Responsive Design
+=============================== */
+@media (max-width: 768px) {
+  #left-panel,
   .left-panel {
-    width: 220px;
+    position: absolute;
+    left: -250px;
+    z-index: 100;
+    width: 250px;
+    transition: left 0.3s ease;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+  }
+
+  #left-panel.open,
+  .left-panel.open {
+    left: 0;
+  }
+
+  .shape-grid {
+    grid-template-columns: repeat(auto-fill, 40px);
+  }
+
+  .shape-item {
+    width: 38px;
+    height: 38px;
+  }
+
+  .shape-item svg {
+    width: 32px;
+    height: 32px;
   }
 }
 
-@media (max-width: 768px) {
+/* ===============================
+🌙 Dark Theme Support
+=============================== */
+[data-theme="dark"] #left-panel,
+[data-theme="dark"] .left-panel {
+  background: #1e1e1e;
+  border-right-color: #333;
+}
+
+[data-theme="dark"] .palette-header {
+  background: #2a2a2a;
+  border-bottom-color: #333;
+}
+
+[data-theme="dark"] .palette-search {
+  background: #2a2a2a;
+  border-color: #444;
+  color: #e0e0e0;
+}
+
+[data-theme="dark"] .palette-search::placeholder {
+  color: #666;
+}
+
+[data-theme="dark"] .category-header {
+  background: #2a2a2a;
+  border-bottom-color: #333;
+  color: #e0e0e0;
+}
+
+[data-theme="dark"] .category-header:hover {
+  background: #333;
+}
+
+[data-theme="dark"] .triangle {
+  border-top-color: #999;
+}
+
+[data-theme="dark"] .shape-item:hover {
+  background: rgba(82, 165, 246, 0.2);
+}
+
+[data-theme="dark"] .shape-item svg {
+  stroke: #ccc;
+}
+
+[data-theme="dark"] .no-results {
+  color: #666;
+}
+
+[data-theme="dark"] #left-panel::-webkit-scrollbar-thumb,
+[data-theme="dark"] .left-panel::-webkit-scrollbar-thumb,
+[data-theme="dark"] .palette-categories::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="dark"] #left-panel::-webkit-scrollbar-thumb:hover,
+[data-theme="dark"] .left-panel::-webkit-scrollbar-thumb:hover,
+[data-theme="dark"] .palette-categories::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+/* ===============================
+♿ Reduced Motion
+=============================== */
+@media (prefers-reduced-motion: reduce) {
+  .shape-item,
+  .category-header,
+  .triangle,
+  .shape-grid,
+  #left-panel,
   .left-panel {
-    position: absolute;
-    top: calc(var(--header-height) + var(--toolbar-height));
-    left: -260px;
-    bottom: var(--statusbar-height);
-    width: 260px;
-    z-index: var(--z-panels);
-    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
-    transition: left var(--transition-base);
+    transition: none;
+  }
+}
+
+/* ===============================
+🖨️ Print Styles
+=============================== */
+@media print {
+  #left-panel,
+  .left-panel {
+    display: none;
+  }
+}
+
+/* ===============================
+🎨 High Contrast Mode
+=============================== */
+@media (prefers-contrast: high) {
+  .shape-item {
+    border: 1px solid currentColor;
   }
 
-  .left-panel.open {
-    left: 0;
+  .category-header {
+    border: 1px solid currentColor;
+  }
+
+  .palette-search {
+    border: 2px solid currentColor;
+  }
+}
+
+/* ===============================
+📲 Touch Device Optimizations
+=============================== */
+@media (hover: none) and (pointer: coarse) {
+  .shape-item {
+    width: 44px;
+    height: 44px;
+  }
+
+  .shape-item svg {
+    width: 38px;
+    height: 38px;
+  }
+
+  .category-header {
+    padding: 8px;
+    min-height: 44px;
+  }
+
+  .shape-item:hover {
+    transform: none;
   }
 }

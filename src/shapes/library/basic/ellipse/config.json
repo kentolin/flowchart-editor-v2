@@ -5,6 +5,7 @@
   "category": "basic",
   "description": "Ellipse/oval shape with independent width and height",
   "icon": "preview.svg",
+  "iconSvg": "<ellipse cx=\"18\" cy=\"18\" rx=\"15\" ry=\"10\"/>",
   "tags": ["basic", "geometric", "ellipse", "oval"],
   
   "defaultSize": {

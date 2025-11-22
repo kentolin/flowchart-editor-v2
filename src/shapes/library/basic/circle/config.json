@@ -5,6 +5,7 @@
   "category": "basic",
   "description": "Perfect circle shape with equal width and height",
   "icon": "preview.svg",
+  "iconSvg": "<circle cx=\"18\" cy=\"18\" r=\"15\"/>",
   "tags": ["basic", "geometric", "circle", "round"],
   
   "defaultSize": {

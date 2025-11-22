@@ -13,12 +13,20 @@
  */
 
 import { NodeModel } from "../models/NodeModel.js";
+import { DebugLogger } from "../../utils/debug/DebugLogger.js";
 
 export class NodeManager {
-  constructor(eventBus, stateManager, shapeRegistry) {
-    this.eventBus = eventBus;
-    this.stateManager = stateManager;
+  constructor(editor, shapeRegistry, eventBus) {
+    // Initialize debug logger
+    this.log = new DebugLogger("NodeManager", "#4CAF50");
+    this.log.enter("constructor");
+
+    this.editor = editor;
     this.shapeRegistry = shapeRegistry;
+    this.eventBus = eventBus;
+
+    // Note: StateManager is accessed via editor if needed
+    this.stateManager = null; // Will be set if needed
 
     // Node storage
     this.nodes = new Map(); // nodeId -> NodeModel
@@ -30,6 +38,9 @@ export class NodeManager {
     this.nodesByType = new Map(); // type -> Set of node IDs
 
     this._setupEventListeners();
+
+    this.log.info("constructor", "✓ NodeManager initialized");
+    this.log.exit("constructor");
   }
 
   /**
@@ -37,10 +48,16 @@ export class NodeManager {
    * @private
    */
   _setupEventListeners() {
+    this.log.enter("_setupEventListeners");
+
     // Listen for state changes that might affect nodes
     this.eventBus.on("theme:changed", ({ theme }) => {
+      this.log.info("_setupEventListeners", `Theme changed to: ${theme}`);
       this._applyThemeToNodes(theme);
     });
+
+    this.log.info("_setupEventListeners", "✓ Event listeners registered");
+    this.log.exit("_setupEventListeners");
   }
 
   /**
@@ -49,14 +66,21 @@ export class NodeManager {
    * @returns {string} - Created node ID
    */
   createNode(data) {
+    this.log.enter("createNode", { type: data.type, x: data.x, y: data.y });
+
     try {
       // Generate ID if not provided
       const nodeId = data.id || this._generateNodeId();
 
+      this.log.info("createNode", `Generated node ID: ${nodeId}`);
+
       // Validate node type exists in registry
       if (!this.shapeRegistry.hasShape(data.type)) {
+        this.log.error("createNode", `Unknown shape type: ${data.type}`);
         throw new Error(`Unknown shape type: ${data.type}`);
       }
+
+      this.log.info("createNode", `Shape type '${data.type}' validated`);
 
       // Create node model
       const nodeData = {
@@ -77,13 +101,19 @@ export class NodeManager {
       };
 
       const node = new NodeModel(nodeData);
+      this.log.info("createNode", `Created NodeModel instance`);
 
       // Store node
       this.nodes.set(nodeId, node);
+      this.log.info(
+        "createNode",
+        `Stored node in map (total: ${this.nodes.size})`
+      );
 
       // Track by type
       if (!this.nodesByType.has(data.type)) {
         this.nodesByType.set(data.type, new Set());
+        this.log.info("createNode", `Created new type set for '${data.type}'`);
       }
       this.nodesByType.get(data.type).add(nodeId);
 
@@ -93,14 +123,18 @@ export class NodeManager {
       // Emit events
       this.eventBus.emit("node:created", {
         nodeId,
-        node: node.serialize(),
+        node: node.toJSON(),
         type: data.type,
       });
 
+      this.log.info("createNode", `✓ Node '${nodeId}' created successfully`);
+      this.log.exit("createNode");
+
       return nodeId;
     } catch (error) {
-      console.error("Error creating node:", error);
+      this.log.error("createNode", "Failed to create node:", error);
       this.eventBus.emit("node:error", { operation: "create", error });
+      this.log.exit("createNode");
       throw error;
     }
   }
@@ -111,7 +145,14 @@ export class NodeManager {
    * @returns {Array} - Array of created node IDs
    */
   createNodes(nodesData) {
-    return nodesData.map((data) => this.createNode(data));
+    this.log.enter("createNodes", { count: nodesData.length });
+
+    const nodeIds = nodesData.map((data) => this.createNode(data));
+
+    this.log.info("createNodes", `✓ Created ${nodeIds.length} nodes`);
+    this.log.exit("createNodes");
+
+    return nodeIds;
   }
 
   /**
@@ -120,7 +161,18 @@ export class NodeManager {
    * @returns {NodeModel|null}
    */
   getNode(nodeId) {
-    return this.nodes.get(nodeId) || null;
+    this.log.enter("getNode", { nodeId });
+
+    const node = this.nodes.get(nodeId) || null;
+
+    if (node) {
+      this.log.info("getNode", `Found node '${nodeId}'`);
+    } else {
+      this.log.warn("getNode", `Node '${nodeId}' not found`);
+    }
+
+    this.log.exit("getNode");
+    return node;
   }
 
   /**
@@ -129,7 +181,17 @@ export class NodeManager {
    * @returns {Array}
    */
   getNodes(nodeIds) {
-    return nodeIds.map((id) => this.getNode(id)).filter(Boolean);
+    this.log.enter("getNodes", { count: nodeIds.length });
+
+    const nodes = nodeIds.map((id) => this.getNode(id)).filter(Boolean);
+
+    this.log.info(
+      "getNodes",
+      `Retrieved ${nodes.length}/${nodeIds.length} nodes`
+    );
+    this.log.exit("getNodes");
+
+    return nodes;
   }
 
   /**
@@ -137,7 +199,14 @@ export class NodeManager {
    * @returns {Array}
    */
   getAllNodes() {
-    return Array.from(this.nodes.values());
+    this.log.enter("getAllNodes");
+
+    const nodes = Array.from(this.nodes.values());
+
+    this.log.info("getAllNodes", `Returning ${nodes.length} nodes`);
+    this.log.exit("getAllNodes");
+
+    return nodes;
   }
 
   /**
@@ -146,12 +215,26 @@ export class NodeManager {
    * @returns {Array}
    */
   getNodesByType(type) {
-    const nodeIds = this.nodesByType.get(type);
-    if (!nodeIds) return [];
+    this.log.enter("getNodesByType", { type });
 
-    return Array.from(nodeIds)
+    const nodeIds = this.nodesByType.get(type);
+    if (!nodeIds) {
+      this.log.info("getNodesByType", `No nodes of type '${type}'`);
+      this.log.exit("getNodesByType");
+      return [];
+    }
+
+    const nodes = Array.from(nodeIds)
       .map((id) => this.getNode(id))
       .filter(Boolean);
+
+    this.log.info(
+      "getNodesByType",
+      `Found ${nodes.length} nodes of type '${type}'`
+    );
+    this.log.exit("getNodesByType");
+
+    return nodes;
   }
 
   /**
@@ -160,7 +243,9 @@ export class NodeManager {
    * @returns {boolean}
    */
   hasNode(nodeId) {
-    return this.nodes.has(nodeId);
+    const exists = this.nodes.has(nodeId);
+    this.log.info("hasNode", `Node '${nodeId}' exists: ${exists}`);
+    return exists;
   }
 
   /**
@@ -169,9 +254,12 @@ export class NodeManager {
    * @param {Object} updates - Properties to update
    */
   updateNode(nodeId, updates) {
+    this.log.enter("updateNode", { nodeId, updates });
+
     const node = this.getNode(nodeId);
     if (!node) {
-      console.warn(`Node ${nodeId} not found`);
+      this.log.warn("updateNode", `Node ${nodeId} not found`);
+      this.log.exit("updateNode");
       return false;
     }
 
@@ -182,11 +270,20 @@ export class NodeManager {
         oldValues[key] = node[key];
       });
 
+      this.log.info(
+        "updateNode",
+        `Updating properties: ${Object.keys(updates).join(", ")}`
+      );
+
       // Apply updates
       Object.assign(node, updates);
 
       // Update type tracking if type changed
       if (updates.type && updates.type !== oldValues.type) {
+        this.log.info(
+          "updateNode",
+          `Type changed from '${oldValues.type}' to '${updates.type}'`
+        );
         this._updateNodeTypeTracking(nodeId, oldValues.type, updates.type);
       }
 
@@ -198,13 +295,17 @@ export class NodeManager {
         nodeId,
         updates,
         oldValues,
-        node: node.serialize(),
+        node: node.toJSON(),
       });
+
+      this.log.info("updateNode", `✓ Node '${nodeId}' updated`);
+      this.log.exit("updateNode");
 
       return true;
     } catch (error) {
-      console.error("Error updating node:", error);
+      this.log.error("updateNode", "Failed to update node:", error);
       this.eventBus.emit("node:error", { operation: "update", nodeId, error });
+      this.log.exit("updateNode");
       return false;
     }
   }
@@ -216,7 +317,12 @@ export class NodeManager {
    * @param {*} value - New value
    */
   updateNodeProperty(nodeId, property, value) {
-    return this.updateNode(nodeId, { [property]: value });
+    this.log.enter("updateNodeProperty", { nodeId, property, value });
+
+    const result = this.updateNode(nodeId, { [property]: value });
+
+    this.log.exit("updateNodeProperty");
+    return result;
   }
 
   /**
@@ -225,8 +331,14 @@ export class NodeManager {
    * @param {Object} position - {x, y}
    */
   updateNodePosition(nodeId, position) {
+    this.log.enter("updateNodePosition", { nodeId, position });
+
     const node = this.getNode(nodeId);
-    if (!node) return false;
+    if (!node) {
+      this.log.warn("updateNodePosition", `Node '${nodeId}' not found`);
+      this.log.exit("updateNodePosition");
+      return false;
+    }
 
     const oldPosition = { x: node.x, y: node.y };
 
@@ -239,6 +351,12 @@ export class NodeManager {
       oldPosition,
     });
 
+    this.log.info(
+      "updateNodePosition",
+      `✓ Moved node from (${oldPosition.x}, ${oldPosition.y}) to (${position.x}, ${position.y})`
+    );
+    this.log.exit("updateNodePosition");
+
     return true;
   }
 
@@ -248,8 +366,14 @@ export class NodeManager {
    * @param {Object} size - {width, height}
    */
   updateNodeSize(nodeId, size) {
+    this.log.enter("updateNodeSize", { nodeId, size });
+
     const node = this.getNode(nodeId);
-    if (!node) return false;
+    if (!node) {
+      this.log.warn("updateNodeSize", `Node '${nodeId}' not found`);
+      this.log.exit("updateNodeSize");
+      return false;
+    }
 
     const oldSize = { width: node.width, height: node.height };
 
@@ -262,6 +386,12 @@ export class NodeManager {
       oldSize,
     });
 
+    this.log.info(
+      "updateNodeSize",
+      `✓ Resized from ${oldSize.width}x${oldSize.height} to ${size.width}x${size.height}`
+    );
+    this.log.exit("updateNodeSize");
+
     return true;
   }
 
@@ -271,24 +401,35 @@ export class NodeManager {
    * @returns {boolean}
    */
   deleteNode(nodeId) {
+    this.log.enter("deleteNode", { nodeId });
+
     const node = this.getNode(nodeId);
     if (!node) {
-      console.warn(`Node ${nodeId} not found`);
+      this.log.warn("deleteNode", `Node ${nodeId} not found`);
+      this.log.exit("deleteNode");
       return false;
     }
 
     try {
       // Store node data for undo
-      const nodeData = node.serialize();
+      const nodeData = node.toJSON();
 
       // Remove from type tracking
       const typeSet = this.nodesByType.get(node.type);
       if (typeSet) {
         typeSet.delete(nodeId);
+        this.log.info(
+          "deleteNode",
+          `Removed from type '${node.type}' tracking`
+        );
       }
 
       // Remove node
       this.nodes.delete(nodeId);
+      this.log.info(
+        "deleteNode",
+        `Removed from nodes map (remaining: ${this.nodes.size})`
+      );
 
       // Update state
       this._updateState();
@@ -299,10 +440,14 @@ export class NodeManager {
         nodeData,
       });
 
+      this.log.info("deleteNode", `✓ Node '${nodeId}' deleted`);
+      this.log.exit("deleteNode");
+
       return true;
     } catch (error) {
-      console.error("Error deleting node:", error);
+      this.log.error("deleteNode", "Failed to delete node:", error);
       this.eventBus.emit("node:error", { operation: "delete", nodeId, error });
+      this.log.exit("deleteNode");
       return false;
     }
   }
@@ -313,6 +458,8 @@ export class NodeManager {
    * @returns {Array} - Successfully deleted node IDs
    */
   deleteNodes(nodeIds) {
+    this.log.enter("deleteNodes", { count: nodeIds.length });
+
     const deleted = [];
 
     nodeIds.forEach((nodeId) => {
@@ -321,6 +468,12 @@ export class NodeManager {
       }
     });
 
+    this.log.info(
+      "deleteNodes",
+      `✓ Deleted ${deleted.length}/${nodeIds.length} nodes`
+    );
+    this.log.exit("deleteNodes");
+
     return deleted;
   }
 
@@ -328,7 +481,10 @@ export class NodeManager {
    * Clear all nodes
    */
   clearAll() {
+    this.log.enter("clearAll");
+
     const nodeIds = Array.from(this.nodes.keys());
+    const count = nodeIds.length;
 
     nodeIds.forEach((nodeId) => {
       this.deleteNode(nodeId);
@@ -341,6 +497,9 @@ export class NodeManager {
     this._updateState();
 
     this.eventBus.emit("nodes:cleared");
+
+    this.log.info("clearAll", `✓ Cleared ${count} nodes`);
+    this.log.exit("clearAll");
   }
 
   /**
@@ -350,19 +509,30 @@ export class NodeManager {
    * @returns {string} - Cloned node ID
    */
   cloneNode(nodeId, offset = { x: 20, y: 20 }) {
-    const node = this.getNode(nodeId);
-    if (!node) return null;
+    this.log.enter("cloneNode", { nodeId, offset });
 
-    const nodeData = node.serialize();
+    const node = this.getNode(nodeId);
+    if (!node) {
+      this.log.warn("cloneNode", `Node '${nodeId}' not found`);
+      this.log.exit("cloneNode");
+      return null;
+    }
+
+    const nodeData = node.toJSON();
 
     // Create new node with offset
-    return this.createNode({
+    const newNodeId = this.createNode({
       ...nodeData,
       id: undefined, // Generate new ID
       x: nodeData.x + offset.x,
       y: nodeData.y + offset.y,
       label: nodeData.label ? `${nodeData.label} (copy)` : "",
     });
+
+    this.log.info("cloneNode", `✓ Cloned '${nodeId}' to '${newNodeId}'`);
+    this.log.exit("cloneNode");
+
+    return newNodeId;
   }
 
   /**
@@ -372,7 +542,19 @@ export class NodeManager {
    * @returns {Array} - Cloned node IDs
    */
   cloneNodes(nodeIds, offset) {
-    return nodeIds.map((id) => this.cloneNode(id, offset)).filter(Boolean);
+    this.log.enter("cloneNodes", { count: nodeIds.length, offset });
+
+    const cloned = nodeIds
+      .map((id) => this.cloneNode(id, offset))
+      .filter(Boolean);
+
+    this.log.info(
+      "cloneNodes",
+      `✓ Cloned ${cloned.length}/${nodeIds.length} nodes`
+    );
+    this.log.exit("cloneNodes");
+
+    return cloned;
   }
 
   /**
@@ -381,10 +563,16 @@ export class NodeManager {
    * @returns {Object} - {x, y, width, height}
    */
   getNodeBounds(nodeId) {
-    const node = this.getNode(nodeId);
-    if (!node) return null;
+    this.log.enter("getNodeBounds", { nodeId });
 
-    return {
+    const node = this.getNode(nodeId);
+    if (!node) {
+      this.log.warn("getNodeBounds", `Node '${nodeId}' not found`);
+      this.log.exit("getNodeBounds");
+      return null;
+    }
+
+    const bounds = {
       x: node.x,
       y: node.y,
       width: node.width,
@@ -396,6 +584,9 @@ export class NodeManager {
       centerX: node.x + node.width / 2,
       centerY: node.y + node.height / 2,
     };
+
+    this.log.exit("getNodeBounds");
+    return bounds;
   }
 
   /**
@@ -404,8 +595,14 @@ export class NodeManager {
    * @returns {Object}
    */
   getNodesBounds(nodeIds) {
+    this.log.enter("getNodesBounds", { count: nodeIds.length });
+
     const nodes = this.getNodes(nodeIds);
-    if (nodes.length === 0) return null;
+    if (nodes.length === 0) {
+      this.log.warn("getNodesBounds", "No nodes found");
+      this.log.exit("getNodesBounds");
+      return null;
+    }
 
     let minX = Infinity;
     let minY = Infinity;
@@ -419,7 +616,7 @@ export class NodeManager {
       maxY = Math.max(maxY, node.y + node.height);
     });
 
-    return {
+    const bounds = {
       x: minX,
       y: minY,
       width: maxX - minX,
@@ -431,6 +628,14 @@ export class NodeManager {
       centerX: (minX + maxX) / 2,
       centerY: (minY + maxY) / 2,
     };
+
+    this.log.info(
+      "getNodesBounds",
+      `Combined bounds: ${bounds.width}x${bounds.height}`
+    );
+    this.log.exit("getNodesBounds");
+
+    return bounds;
   }
 
   /**
@@ -443,12 +648,18 @@ export class NodeManager {
     const bounds = this.getNodeBounds(nodeId);
     if (!bounds) return false;
 
-    return (
+    const inside =
       point.x >= bounds.left &&
       point.x <= bounds.right &&
       point.y >= bounds.top &&
-      point.y <= bounds.bottom
+      point.y <= bounds.bottom;
+
+    this.log.info(
+      "isPointInNode",
+      `Point (${point.x}, ${point.y}) in node '${nodeId}': ${inside}`
     );
+
+    return inside;
   }
 
   /**
@@ -457,9 +668,16 @@ export class NodeManager {
    * @returns {Array} - Node IDs at point
    */
   getNodesAtPoint(point) {
-    return this.getAllNodes()
+    this.log.enter("getNodesAtPoint", { point });
+
+    const nodeIds = this.getAllNodes()
       .filter((node) => this.isPointInNode(node.id, point))
       .map((node) => node.id);
+
+    this.log.info("getNodesAtPoint", `Found ${nodeIds.length} nodes at point`);
+    this.log.exit("getNodesAtPoint");
+
+    return nodeIds;
   }
 
   /**
@@ -468,12 +686,22 @@ export class NodeManager {
    * @returns {Array} - Node IDs in rectangle
    */
   getNodesInRect(rect) {
-    return this.getAllNodes()
+    this.log.enter("getNodesInRect", { rect });
+
+    const nodeIds = this.getAllNodes()
       .filter((node) => {
         const bounds = this.getNodeBounds(node.id);
         return this._boundsIntersect(bounds, rect);
       })
       .map((node) => node.id);
+
+    this.log.info(
+      "getNodesInRect",
+      `Found ${nodeIds.length} nodes in rectangle`
+    );
+    this.log.exit("getNodesInRect");
+
+    return nodeIds;
   }
 
   /**
@@ -494,17 +722,29 @@ export class NodeManager {
    * @returns {Object}
    */
   getStats() {
+    this.log.enter("getStats");
+
     const typeStats = {};
 
     this.nodesByType.forEach((nodeIds, type) => {
       typeStats[type] = nodeIds.size;
     });
 
-    return {
+    const stats = {
       totalNodes: this.nodes.size,
       byType: typeStats,
       nextId: this.nextNodeId,
     };
+
+    this.log.info(
+      "getStats",
+      `Total nodes: ${stats.totalNodes}, Types: ${
+        Object.keys(typeStats).length
+      }`
+    );
+    this.log.exit("getStats");
+
+    return stats;
   }
 
   /**
@@ -513,7 +753,14 @@ export class NodeManager {
    * @returns {Array}
    */
   findNodes(predicate) {
-    return this.getAllNodes().filter(predicate);
+    this.log.enter("findNodes");
+
+    const nodes = this.getAllNodes().filter(predicate);
+
+    this.log.info("findNodes", `Found ${nodes.length} matching nodes`);
+    this.log.exit("findNodes");
+
+    return nodes;
   }
 
   /**
@@ -529,6 +776,7 @@ export class NodeManager {
    * @param {string} nodeId - Node identifier
    */
   lockNode(nodeId) {
+    this.log.info("lockNode", `Locking node '${nodeId}'`);
     return this.updateNodeProperty(nodeId, "locked", true);
   }
 
@@ -537,6 +785,7 @@ export class NodeManager {
    * @param {string} nodeId - Node identifier
    */
   unlockNode(nodeId) {
+    this.log.info("unlockNode", `Unlocking node '${nodeId}'`);
     return this.updateNodeProperty(nodeId, "locked", false);
   }
 
@@ -545,6 +794,7 @@ export class NodeManager {
    * @param {string} nodeId - Node identifier
    */
   showNode(nodeId) {
+    this.log.info("showNode", `Showing node '${nodeId}'`);
     return this.updateNodeProperty(nodeId, "visible", true);
   }
 
@@ -553,6 +803,7 @@ export class NodeManager {
    * @param {string} nodeId - Node identifier
    */
   hideNode(nodeId) {
+    this.log.info("hideNode", `Hiding node '${nodeId}'`);
     return this.updateNodeProperty(nodeId, "visible", false);
   }
 
@@ -561,7 +812,9 @@ export class NodeManager {
    * @private
    */
   _generateNodeId() {
-    return `node_${this.nextNodeId++}`;
+    const id = `node_${this.nextNodeId++}`;
+    this.log.info("_generateNodeId", `Generated ID: ${id}`);
+    return id;
   }
 
   /**
@@ -569,6 +822,8 @@ export class NodeManager {
    * @private
    */
   _updateNodeTypeTracking(nodeId, oldType, newType) {
+    this.log.enter("_updateNodeTypeTracking", { nodeId, oldType, newType });
+
     // Remove from old type
     const oldTypeSet = this.nodesByType.get(oldType);
     if (oldTypeSet) {
@@ -580,6 +835,12 @@ export class NodeManager {
       this.nodesByType.set(newType, new Set());
     }
     this.nodesByType.get(newType).add(nodeId);
+
+    this.log.info(
+      "_updateNodeTypeTracking",
+      `✓ Moved node from type '${oldType}' to '${newType}'`
+    );
+    this.log.exit("_updateNodeTypeTracking");
   }
 
   /**
@@ -587,12 +848,20 @@ export class NodeManager {
    * @private
    */
   _applyThemeToNodes(theme) {
+    this.log.enter("_applyThemeToNodes", { theme });
+
     this.getAllNodes().forEach((node) => {
       this.eventBus.emit("node:theme:changed", {
         nodeId: node.id,
         theme,
       });
     });
+
+    this.log.info(
+      "_applyThemeToNodes",
+      `✓ Applied theme to ${this.nodes.size} nodes`
+    );
+    this.log.exit("_applyThemeToNodes");
   }
 
   /**
@@ -600,6 +869,8 @@ export class NodeManager {
    * @private
    */
   _updateState() {
+    if (!this.stateManager) return;
+
     this.stateManager.setState("nodes", {
       count: this.nodes.size,
       byType: Object.fromEntries(
@@ -616,7 +887,14 @@ export class NodeManager {
    * @returns {Array}
    */
   serialize() {
-    return this.getAllNodes().map((node) => node.serialize());
+    this.log.enter("serialize");
+
+    const data = this.getAllNodes().map((node) => node.toJSON());
+
+    this.log.info("serialize", `Serialized ${data.length} nodes`);
+    this.log.exit("serialize");
+
+    return data;
   }
 
   /**
@@ -624,6 +902,8 @@ export class NodeManager {
    * @param {Array} nodesData - Serialized nodes
    */
   deserialize(nodesData) {
+    this.log.enter("deserialize", { count: nodesData.length });
+
     // Clear existing nodes
     this.clearAll();
 
@@ -643,13 +923,24 @@ export class NodeManager {
     );
 
     this.nextNodeId = maxId + 1;
+
+    this.log.info(
+      "deserialize",
+      `✓ Deserialized ${nodesData.length} nodes, next ID: ${this.nextNodeId}`
+    );
+    this.log.exit("deserialize");
   }
 
   /**
    * Clean up resources
    */
   destroy() {
+    this.log.enter("destroy");
+
     this.clearAll();
     this.eventBus.off("theme:changed");
+
+    this.log.info("destroy", "✓ NodeManager destroyed");
+    this.log.exit("destroy");
   }
 }

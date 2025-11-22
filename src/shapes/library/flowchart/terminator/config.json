@@ -4,6 +4,7 @@
   "category": "flowchart",
   "description": "Represents the start or end of a flowchart process",
   "icon": "preview.svg",
+  "iconSvg": "<ellipse cx=\"18\" cy=\"10\" rx=\"16\" ry=\"8\"/>",
   "tags": ["flowchart", "terminator", "start", "end", "begin"],
   
   "defaultSize": {

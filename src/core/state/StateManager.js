@@ -3,38 +3,12 @@
  *
  * High-level state management layer that coordinates state changes
  * and provides a clean API for the rest of the application.
- * Sits between EditorState and other managers/components.
- *
- * DEPENDENCIES: EditorState
  *
  * @module core/state/StateManager
  * @version 1.0.0
- *
- * Purpose:
- * - Simplified state access for components
- * - Coordinates complex state changes across multiple domains
- * - Business logic for state operations
- * - Maintains state consistency
- * - Provides typed API instead of magic strings
- *
- * Responsibilities:
- * - Canvas operations (zoom, pan, fit-to-view)
- * - Node/edge queries (by ID, by type, connections)
- * - Selection operations (select, deselect, toggle, clear)
- * - Viewport mode management
- * - Theme operations
- * - State introspection and queries
- *
- * @example
- * const editorState = new EditorState(eventBus);
- * const stateManager = new StateManager(editorState);
- *
- * // High-level operations
- * stateManager.zoomTo(2.0);
- * stateManager.selectNode('node-1');
- * stateManager.setViewportMode('pan');
- * stateManager.fitToView();
  */
+
+import { DebugLogger } from "../../utils/debug/DebugLogger.js";
 
 /**
  * StateManager Class
@@ -47,19 +21,21 @@ class StateManager {
    * Initialize the state manager
    *
    * @param {EditorState} editorState - Core editor state instance
-   *
-   * @throws {Error} If editorState is not valid
-   *
-   * @example
-   * const manager = new StateManager(editorState);
    */
   constructor(editorState) {
+    // Initialize debug logger
+    this.log = new DebugLogger("StateManager", "#FF5722");
+    this.log.enter("constructor");
+
     // Validate editorState
     if (!editorState || typeof editorState.get !== "function") {
+      this.log.error("constructor", "Invalid EditorState instance");
       throw new Error(
         "StateManager: Constructor requires valid EditorState instance"
       );
     }
+
+    this.log.info("constructor", "EditorState validated");
 
     // Store reference to state
     this.editorState = editorState;
@@ -69,43 +45,54 @@ class StateManager {
 
     // Listen for state changes to invalidate cache
     if (editorState.eventBus && typeof editorState.eventBus.on === "function") {
-      editorState.eventBus.on("state:changed", () => this.queryCache.clear());
-      editorState.eventBus.on("state:batch-changed", () =>
-        this.queryCache.clear()
-      );
-      editorState.eventBus.on("state:node-added", () =>
-        this.queryCache.clear()
-      );
-      editorState.eventBus.on("state:node-removed", () =>
-        this.queryCache.clear()
-      );
-      editorState.eventBus.on("state:node-updated", () =>
-        this.queryCache.clear()
-      );
-      editorState.eventBus.on("state:edge-added", () =>
-        this.queryCache.clear()
-      );
-      editorState.eventBus.on("state:edge-removed", () =>
-        this.queryCache.clear()
-      );
-      editorState.eventBus.on("state:selection-changed", () =>
-        this.queryCache.clear()
-      );
+      this.log.info("constructor", "Setting up cache invalidation listeners");
+
+      editorState.eventBus.on("state:changed", () => {
+        this.log.info("constructor", "Cache cleared: state:changed");
+        this.queryCache.clear();
+      });
+      editorState.eventBus.on("state:batch-changed", () => {
+        this.log.info("constructor", "Cache cleared: state:batch-changed");
+        this.queryCache.clear();
+      });
+      editorState.eventBus.on("state:node-added", () => {
+        this.log.info("constructor", "Cache cleared: state:node-added");
+        this.queryCache.clear();
+      });
+      editorState.eventBus.on("state:node-removed", () => {
+        this.log.info("constructor", "Cache cleared: state:node-removed");
+        this.queryCache.clear();
+      });
+      editorState.eventBus.on("state:node-updated", () => {
+        this.log.info("constructor", "Cache cleared: state:node-updated");
+        this.queryCache.clear();
+      });
+      editorState.eventBus.on("state:edge-added", () => {
+        this.log.info("constructor", "Cache cleared: state:edge-added");
+        this.queryCache.clear();
+      });
+      editorState.eventBus.on("state:edge-removed", () => {
+        this.log.info("constructor", "Cache cleared: state:edge-removed");
+        this.queryCache.clear();
+      });
+      editorState.eventBus.on("state:selection-changed", () => {
+        this.log.info("constructor", "Cache cleared: state:selection-changed");
+        this.queryCache.clear();
+      });
     }
+
+    this.log.info("constructor", "✓ StateManager initialized");
+    this.log.exit("constructor");
   }
 
   /**
    * Get the underlying EditorState
    *
-   * Use this for direct state access when needed.
-   *
    * @returns {EditorState} The editor state instance
-   *
-   * @example
-   * const raw = stateManager.getEditorState();
-   * raw.set('custom.field', value);
    */
   getEditorState() {
+    this.log.enter("getEditorState");
+    this.log.exit("getEditorState");
     return this.editorState;
   }
 
@@ -116,16 +103,12 @@ class StateManager {
    *
    * @param {number} zoomLevel - Zoom factor (1.0 = 100%, 2.0 = 200%)
    * @param {Object} [options] - Optional metadata
-   * @param {string} [options.reason] - Why zoom changed
-   *
-   * @throws {Error} If zoom is not a positive number
-   *
-   * @example
-   * stateManager.setZoom(1.5); // 150% zoom
-   * stateManager.setZoom(0.5); // 50% zoom
    */
   setZoom(zoomLevel, options = {}) {
+    this.log.enter("setZoom", { zoomLevel });
+
     if (typeof zoomLevel !== "number" || zoomLevel <= 0) {
+      this.log.error("setZoom", `Invalid zoom: ${zoomLevel}`);
       throw new Error(
         `StateManager.setZoom: Zoom must be positive number, got ${zoomLevel}`
       );
@@ -134,62 +117,83 @@ class StateManager {
     this.editorState.set("canvas.zoom", zoomLevel, {
       reason: options.reason || "zoom changed",
     });
+
+    this.log.info("setZoom", `✓ Zoom set to ${(zoomLevel * 100).toFixed(0)}%`);
+    this.log.exit("setZoom");
   }
 
   /**
    * Get current zoom level
    *
    * @returns {number} Current zoom factor
-   *
-   * @example
-   * const zoom = stateManager.getZoom(); // 1.5
    */
   getZoom() {
-    return this.editorState.get("canvas.zoom", 1);
+    this.log.enter("getZoom");
+
+    const zoom = this.editorState.get("canvas.zoom", 1);
+
+    this.log.info("getZoom", `Current zoom: ${(zoom * 100).toFixed(0)}%`);
+    this.log.exit("getZoom");
+
+    return zoom;
   }
 
   /**
    * Zoom in (increase zoom by 20%)
    *
    * @param {Object} [options] - Optional metadata
-   * @param {string} [options.reason] - Why zoom changed
-   *
-   * @example
-   * stateManager.zoomIn();
-   * stateManager.zoomIn({ reason: 'user pressed Ctrl+=' });
    */
   zoomIn(options = {}) {
+    this.log.enter("zoomIn");
+
     const current = this.getZoom();
     const next = Math.min(current * 1.2, 5); // Max 500% zoom
+
+    this.log.info(
+      "zoomIn",
+      `Zooming from ${(current * 100).toFixed(0)}% to ${(next * 100).toFixed(
+        0
+      )}%`
+    );
     this.setZoom(next, { reason: options.reason || "zoom in" });
+
+    this.log.exit("zoomIn");
   }
 
   /**
    * Zoom out (decrease zoom by 17%)
    *
    * @param {Object} [options] - Optional metadata
-   * @param {string} [options.reason] - Why zoom changed
-   *
-   * @example
-   * stateManager.zoomOut();
-   * stateManager.zoomOut({ reason: 'user pressed Ctrl+-' });
    */
   zoomOut(options = {}) {
+    this.log.enter("zoomOut");
+
     const current = this.getZoom();
     const next = Math.max(current / 1.2, 0.1); // Min 10% zoom
+
+    this.log.info(
+      "zoomOut",
+      `Zooming from ${(current * 100).toFixed(0)}% to ${(next * 100).toFixed(
+        0
+      )}%`
+    );
     this.setZoom(next, { reason: options.reason || "zoom out" });
+
+    this.log.exit("zoomOut");
   }
 
   /**
    * Reset zoom to 100%
    *
    * @param {Object} [options] - Optional metadata
-   *
-   * @example
-   * stateManager.resetZoom();
    */
   resetZoom(options = {}) {
+    this.log.enter("resetZoom");
+
     this.setZoom(1, { reason: options.reason || "reset zoom" });
+
+    this.log.info("resetZoom", "✓ Zoom reset to 100%");
+    this.log.exit("resetZoom");
   }
 
   /**
@@ -198,13 +202,15 @@ class StateManager {
    * @param {number} x - X offset
    * @param {number} y - Y offset
    * @param {Object} [options] - Optional metadata
-   * @param {string} [options.reason] - Why pan changed
-   *
-   * @example
-   * stateManager.setPan(100, 50);
    */
   setPan(x, y, options = {}) {
+    this.log.enter("setPan", { x, y });
+
     if (typeof x !== "number" || typeof y !== "number") {
+      this.log.error(
+        "setPan",
+        `Invalid coordinates: (${typeof x}, ${typeof y})`
+      );
       throw new Error(
         `StateManager.setPan: Coordinates must be numbers, got (${typeof x}, ${typeof y})`
       );
@@ -219,22 +225,31 @@ class StateManager {
         reason: options.reason || "pan changed",
       }
     );
+
+    this.log.info("setPan", `✓ Pan set to (${x.toFixed(0)}, ${y.toFixed(0)})`);
+    this.log.exit("setPan");
   }
 
   /**
    * Get current pan position
    *
    * @returns {Object} Object with x and y pan values
-   *
-   * @example
-   * const pan = stateManager.getPan();
-   * console.log(pan); // { x: 100, y: 50 }
    */
   getPan() {
-    return {
+    this.log.enter("getPan");
+
+    const pan = {
       x: this.editorState.get("canvas.panX", 0),
       y: this.editorState.get("canvas.panY", 0),
     };
+
+    this.log.info(
+      "getPan",
+      `Current pan: (${pan.x.toFixed(0)}, ${pan.y.toFixed(0)})`
+    );
+    this.log.exit("getPan");
+
+    return pan;
   }
 
   /**
@@ -243,12 +258,15 @@ class StateManager {
    * @param {number} deltaX - X offset to add
    * @param {number} deltaY - Y offset to add
    * @param {Object} [options] - Optional metadata
-   *
-   * @example
-   * stateManager.panBy(50, 30); // Move view by 50 right, 30 down
    */
   panBy(deltaX, deltaY, options = {}) {
+    this.log.enter("panBy", { deltaX, deltaY });
+
     if (typeof deltaX !== "number" || typeof deltaY !== "number") {
+      this.log.error(
+        "panBy",
+        `Invalid deltas: (${typeof deltaX}, ${typeof deltaY})`
+      );
       throw new Error(
         `StateManager.panBy: Deltas must be numbers, got (${typeof deltaX}, ${typeof deltaY})`
       );
@@ -256,43 +274,48 @@ class StateManager {
 
     const current = this.getPan();
     this.setPan(current.x + deltaX, current.y + deltaY, options);
+
+    this.log.info("panBy", `✓ Panned by (${deltaX}, ${deltaY})`);
+    this.log.exit("panBy");
   }
 
   /**
    * Reset pan to origin (0, 0)
    *
    * @param {Object} [options] - Optional metadata
-   *
-   * @example
-   * stateManager.resetPan();
    */
   resetPan(options = {}) {
+    this.log.enter("resetPan");
+
     this.setPan(0, 0, { reason: options.reason || "reset pan" });
+
+    this.log.info("resetPan", "✓ Pan reset to origin");
+    this.log.exit("resetPan");
   }
 
   /**
    * Fit all content to view
    *
-   * Calculates bounds of all nodes and sets zoom/pan to fit them
-   * with padding.
-   *
    * @param {Object} [options] - Optional metadata
-   * @param {number} [options.padding=50] - Padding around content
-   * @param {string} [options.reason] - Why fit was triggered
-   *
-   * @example
-   * stateManager.fitToView();
-   * stateManager.fitToView({ padding: 100 });
    */
   fitToView(options = {}) {
+    this.log.enter("fitToView");
+
     const padding = options.padding ?? 50;
     const nodes = this.editorState.getAllNodes();
 
     if (nodes.length === 0) {
+      this.log.warn("fitToView", "No nodes to fit");
       this.resetZoom();
       this.resetPan();
+      this.log.exit("fitToView");
       return;
     }
+
+    this.log.info(
+      "fitToView",
+      `Fitting ${nodes.length} nodes with ${padding}px padding`
+    );
 
     // Calculate bounds
     let minX = Infinity,
@@ -340,6 +363,14 @@ class StateManager {
         reason: options.reason || "fit to view",
       }
     );
+
+    this.log.info(
+      "fitToView",
+      `✓ Fitted to ${(zoom * 100).toFixed(0)}% zoom at (${panX.toFixed(
+        0
+      )}, ${panY.toFixed(0)})`
+    );
+    this.log.exit("fitToView");
   }
 
   /**
@@ -348,12 +379,15 @@ class StateManager {
    * @param {number} width - Canvas width
    * @param {number} height - Canvas height
    * @param {Object} [options] - Optional metadata
-   *
-   * @example
-   * stateManager.setCanvasSize(1920, 1080);
    */
   setCanvasSize(width, height, options = {}) {
+    this.log.enter("setCanvasSize", { width, height });
+
     if (typeof width !== "number" || typeof height !== "number") {
+      this.log.error(
+        "setCanvasSize",
+        `Invalid dimensions: (${typeof width}, ${typeof height})`
+      );
       throw new Error(
         `StateManager.setCanvasSize: Dimensions must be numbers, got (${typeof width}, ${typeof height})`
       );
@@ -368,22 +402,28 @@ class StateManager {
         reason: options.reason || "canvas resized",
       }
     );
+
+    this.log.info("setCanvasSize", `✓ Canvas size set to ${width}x${height}`);
+    this.log.exit("setCanvasSize");
   }
 
   /**
    * Get canvas dimensions
    *
    * @returns {Object} Object with width and height
-   *
-   * @example
-   * const size = stateManager.getCanvasSize();
-   * console.log(size); // { width: 1920, height: 1080 }
    */
   getCanvasSize() {
-    return {
+    this.log.enter("getCanvasSize");
+
+    const size = {
       width: this.editorState.get("canvas.width", 800),
       height: this.editorState.get("canvas.height", 600),
     };
+
+    this.log.info("getCanvasSize", `Canvas size: ${size.width}x${size.height}`);
+    this.log.exit("getCanvasSize");
+
+    return size;
   }
 
   // ==================== SELECTION OPERATIONS ====================
@@ -391,17 +431,14 @@ class StateManager {
   /**
    * Select a single node
    *
-   * Replaces current selection with this node.
-   *
    * @param {string} nodeId - Node to select
    * @param {Object} [options] - Optional metadata
-   * @param {string} [options.reason] - Why node was selected
-   *
-   * @example
-   * stateManager.selectNode('node-1');
    */
   selectNode(nodeId, options = {}) {
+    this.log.enter("selectNode", { nodeId });
+
     if (!nodeId || typeof nodeId !== "string") {
+      this.log.error("selectNode", `Invalid nodeId: ${typeof nodeId}`);
       throw new Error(
         `StateManager.selectNode: nodeId must be non-empty string, got ${typeof nodeId}`
       );
@@ -413,21 +450,22 @@ class StateManager {
         reason: options.reason || "node selected",
       }
     );
+
+    this.log.info("selectNode", `✓ Selected node '${nodeId}'`);
+    this.log.exit("selectNode");
   }
 
   /**
    * Select multiple nodes
    *
-   * Replaces current selection with these nodes.
-   *
    * @param {string[]} nodeIds - Node IDs to select
    * @param {Object} [options] - Optional metadata
-   *
-   * @example
-   * stateManager.selectNodes(['node-1', 'node-2', 'node-3']);
    */
   selectNodes(nodeIds, options = {}) {
+    this.log.enter("selectNodes", { count: nodeIds.length });
+
     if (!Array.isArray(nodeIds)) {
+      this.log.error("selectNodes", `Invalid nodeIds: ${typeof nodeIds}`);
       throw new Error(
         `StateManager.selectNodes: nodeIds must be array, got ${typeof nodeIds}`
       );
@@ -439,6 +477,9 @@ class StateManager {
         reason: options.reason || "nodes selected",
       }
     );
+
+    this.log.info("selectNodes", `✓ Selected ${nodeIds.length} nodes`);
+    this.log.exit("selectNodes");
   }
 
   /**
@@ -446,12 +487,12 @@ class StateManager {
    *
    * @param {string} nodeId - Node to add
    * @param {Object} [options] - Optional metadata
-   *
-   * @example
-   * stateManager.addToSelection('node-4');
    */
   addNodeToSelection(nodeId, options = {}) {
+    this.log.enter("addNodeToSelection", { nodeId });
+
     if (!nodeId || typeof nodeId !== "string") {
+      this.log.error("addNodeToSelection", `Invalid nodeId: ${typeof nodeId}`);
       throw new Error(
         `StateManager.addNodeToSelection: nodeId must be non-empty string`
       );
@@ -469,7 +510,18 @@ class StateManager {
           reason: options.reason || "node added to selection",
         }
       );
+      this.log.info(
+        "addNodeToSelection",
+        `✓ Added node '${nodeId}' to selection (total: ${current.length})`
+      );
+    } else {
+      this.log.info(
+        "addNodeToSelection",
+        `Node '${nodeId}' already in selection`
+      );
     }
+
+    this.log.exit("addNodeToSelection");
   }
 
   /**
@@ -477,11 +529,10 @@ class StateManager {
    *
    * @param {string} nodeId - Node to remove
    * @param {Object} [options] - Optional metadata
-   *
-   * @example
-   * stateManager.removeFromSelection('node-1');
    */
   removeNodeFromSelection(nodeId, options = {}) {
+    this.log.enter("removeNodeFromSelection", { nodeId });
+
     const current = this.getSelectedNodeIds();
     const filtered = current.filter((id) => id !== nodeId);
 
@@ -495,25 +546,39 @@ class StateManager {
           reason: options.reason || "node removed from selection",
         }
       );
+      this.log.info(
+        "removeNodeFromSelection",
+        `✓ Removed node '${nodeId}' from selection (remaining: ${filtered.length})`
+      );
+    } else {
+      this.log.info(
+        "removeNodeFromSelection",
+        `Node '${nodeId}' not in selection`
+      );
     }
+
+    this.log.exit("removeNodeFromSelection");
   }
 
   /**
-   * Toggle node selection (select if not selected, deselect if selected)
+   * Toggle node selection
    *
    * @param {string} nodeId - Node to toggle
    * @param {Object} [options] - Optional metadata
-   *
-   * @example
-   * stateManager.toggleNode('node-1');
    */
   toggleNodeSelection(nodeId, options = {}) {
+    this.log.enter("toggleNodeSelection", { nodeId });
+
     const current = this.getSelectedNodeIds();
     if (current.includes(nodeId)) {
+      this.log.info("toggleNodeSelection", "Node selected, will deselect");
       this.removeNodeFromSelection(nodeId, options);
     } else {
+      this.log.info("toggleNodeSelection", "Node not selected, will select");
       this.addNodeToSelection(nodeId, options);
     }
+
+    this.log.exit("toggleNodeSelection");
   }
 
   /**
@@ -521,12 +586,12 @@ class StateManager {
    *
    * @param {string} edgeId - Edge to select
    * @param {Object} [options] - Optional metadata
-   *
-   * @example
-   * stateManager.selectEdge('edge-1');
    */
   selectEdge(edgeId, options = {}) {
+    this.log.enter("selectEdge", { edgeId });
+
     if (!edgeId || typeof edgeId !== "string") {
+      this.log.error("selectEdge", `Invalid edgeId: ${typeof edgeId}`);
       throw new Error(
         `StateManager.selectEdge: edgeId must be non-empty string`
       );
@@ -538,88 +603,108 @@ class StateManager {
         reason: options.reason || "edge selected",
       }
     );
+
+    this.log.info("selectEdge", `✓ Selected edge '${edgeId}'`);
+    this.log.exit("selectEdge");
   }
 
   /**
    * Get selected node IDs
    *
    * @returns {string[]} Array of selected node IDs
-   *
-   * @example
-   * const selected = stateManager.getSelectedNodeIds();
-   * console.log(selected); // ['node-1', 'node-2']
    */
   getSelectedNodeIds() {
-    return Array.from(this.editorState.get("selection.nodeIds", new Set()));
+    this.log.enter("getSelectedNodeIds");
+
+    const selected = Array.from(
+      this.editorState.get("selection.nodeIds", new Set())
+    );
+
+    this.log.info("getSelectedNodeIds", `${selected.length} nodes selected`);
+    this.log.exit("getSelectedNodeIds");
+
+    return selected;
   }
 
   /**
    * Get selected edge IDs
    *
    * @returns {string[]} Array of selected edge IDs
-   *
-   * @example
-   * const selected = stateManager.getSelectedEdgeIds();
    */
   getSelectedEdgeIds() {
-    return Array.from(this.editorState.get("selection.edgeIds", new Set()));
+    this.log.enter("getSelectedEdgeIds");
+
+    const selected = Array.from(
+      this.editorState.get("selection.edgeIds", new Set())
+    );
+
+    this.log.info("getSelectedEdgeIds", `${selected.length} edges selected`);
+    this.log.exit("getSelectedEdgeIds");
+
+    return selected;
   }
 
   /**
    * Get all selected entities
    *
    * @returns {Object} Object with nodeIds and edgeIds arrays
-   *
-   * @example
-   * const selection = stateManager.getSelection();
-   * console.log(selection); // { nodeIds: [...], edgeIds: [...] }
    */
   getSelection() {
-    return {
+    this.log.enter("getSelection");
+
+    const selection = {
       nodeIds: this.getSelectedNodeIds(),
       edgeIds: this.getSelectedEdgeIds(),
     };
+
+    this.log.info(
+      "getSelection",
+      `Selection: ${selection.nodeIds.length} nodes, ${selection.edgeIds.length} edges`
+    );
+    this.log.exit("getSelection");
+
+    return selection;
   }
 
   /**
    * Check if node is selected
    *
    * @param {string} nodeId - Node to check
-   *
    * @returns {boolean} True if node is selected
-   *
-   * @example
-   * if (stateManager.isNodeSelected('node-1')) {
-   *   console.log('Node 1 is selected');
-   * }
    */
   isNodeSelected(nodeId) {
-    return this.getSelectedNodeIds().includes(nodeId);
+    const selected = this.getSelectedNodeIds().includes(nodeId);
+    this.log.info("isNodeSelected", `Node '${nodeId}' selected: ${selected}`);
+    return selected;
   }
 
   /**
    * Clear all selections
    *
    * @param {Object} [options] - Optional metadata
-   *
-   * @example
-   * stateManager.clearSelection();
    */
   clearSelection(options = {}) {
+    this.log.enter("clearSelection");
+
+    const beforeCount =
+      this.getSelectedNodeIds().length + this.getSelectedEdgeIds().length;
+
     this.editorState.clearSelection({
       reason: options.reason || "selection cleared",
     });
+
+    this.log.info("clearSelection", `✓ Cleared ${beforeCount} selections`);
+    this.log.exit("clearSelection");
   }
 
   /**
    * Select all nodes
    *
    * @param {Object} [options] - Optional metadata
-   *
-   * @example
-   * stateManager.selectAll();
    */
   selectAll(options = {}) {
+    this.log.enter("selectAll");
+
     const allNodeIds = this.editorState.getAllNodes().map((node) => node.id);
     const allEdgeIds = this.editorState.getAllEdges().map((edge) => edge.id);
 
@@ -629,6 +714,12 @@ class StateManager {
         reason: options.reason || "select all",
       }
     );
+
+    this.log.info(
+      "selectAll",
+      `✓ Selected all: ${allNodeIds.length} nodes, ${allEdgeIds.length} edges`
+    );
+    this.log.exit("selectAll");
   }
 
   // ==================== VIEWPORT OPERATIONS ====================
@@ -638,13 +729,12 @@ class StateManager {
    *
    * @param {string} mode - Mode name (select, pan, zoom, etc.)
    * @param {Object} [options] - Optional metadata
-   *
-   * @example
-   * stateManager.setViewportMode('pan');
-   * stateManager.setViewportMode('select');
    */
   setViewportMode(mode, options = {}) {
+    this.log.enter("setViewportMode", { mode });
+
     if (typeof mode !== "string") {
+      this.log.error("setViewportMode", `Invalid mode: ${typeof mode}`);
       throw new Error(
         `StateManager.setViewportMode: Mode must be string, got ${typeof mode}`
       );
@@ -653,18 +743,25 @@ class StateManager {
     this.editorState.set("viewport.mode", mode, {
       reason: options.reason || `viewport mode changed to ${mode}`,
     });
+
+    this.log.info("setViewportMode", `✓ Mode set to '${mode}'`);
+    this.log.exit("setViewportMode");
   }
 
   /**
    * Get current viewport mode
    *
    * @returns {string} Current mode
-   *
-   * @example
-   * const mode = stateManager.getViewportMode();
    */
   getViewportMode() {
-    return this.editorState.get("viewport.mode", "select");
+    this.log.enter("getViewportMode");
+
+    const mode = this.editorState.get("viewport.mode", "select");
+
+    this.log.info("getViewportMode", `Current mode: '${mode}'`);
+    this.log.exit("getViewportMode");
+
+    return mode;
   }
 
   /**
@@ -674,13 +771,10 @@ class StateManager {
    * @param {number} [startX] - Drag start X
    * @param {number} [startY] - Drag start Y
    * @param {Object} [options] - Optional metadata
-   *
-   * @example
-   * stateManager.setDragging(true, 100, 50);
-   * // ... perform drag ...
-   * stateManager.setDragging(false);
    */
   setDragging(isDragging, startX = 0, startY = 0, options = {}) {
+    this.log.enter("setDragging", { isDragging, startX, startY });
+
     this.editorState.update(
       {
         "viewport.isDragging": isDragging,
@@ -689,25 +783,32 @@ class StateManager {
       },
       {
         reason: options.reason || (isDragging ? "drag started" : "drag ended"),
-        silent: true, // Usually don't emit events for these frequent changes
+        silent: true, // Don't emit events for frequent changes
       }
     );
+
+    this.log.info("setDragging", `✓ Dragging: ${isDragging}`);
+    this.log.exit("setDragging");
   }
 
   /**
    * Get dragging state
    *
    * @returns {Object} Dragging state with isDragging, startX, startY
-   *
-   * @example
-   * const drag = stateManager.getDragging();
    */
   getDragging() {
-    return {
+    this.log.enter("getDragging");
+
+    const dragging = {
       isDragging: this.editorState.get("viewport.isDragging", false),
       startX: this.editorState.get("viewport.dragStartX", 0),
       startY: this.editorState.get("viewport.dragStartY", 0),
     };
+
+    this.log.info("getDragging", `Dragging: ${dragging.isDragging}`);
+    this.log.exit("getDragging");
+
+    return dragging;
   }
 
   // ==================== THEME OPERATIONS ====================
@@ -717,26 +818,32 @@ class StateManager {
    *
    * @param {string} themeName - Theme name (light, dark, etc.)
    * @param {Object} [options] - Optional metadata
-   *
-   * @example
-   * stateManager.setTheme('dark');
    */
   setTheme(themeName, options = {}) {
+    this.log.enter("setTheme", { themeName });
+
     this.editorState.set("theme.name", themeName, {
       reason: options.reason || `theme changed to ${themeName}`,
     });
+
+    this.log.info("setTheme", `✓ Theme set to '${themeName}'`);
+    this.log.exit("setTheme");
   }
 
   /**
    * Get current theme
    *
    * @returns {string} Current theme name
-   *
-   * @example
-   * const theme = stateManager.getTheme();
    */
   getTheme() {
-    return this.editorState.get("theme.name", "light");
+    this.log.enter("getTheme");
+
+    const theme = this.editorState.get("theme.name", "light");
+
+    this.log.info("getTheme", `Current theme: '${theme}'`);
+    this.log.exit("getTheme");
+
+    return theme;
   }
 
   /**
@@ -744,26 +851,32 @@ class StateManager {
    *
    * @param {string} color - Color value (hex, rgb, etc.)
    * @param {Object} [options] - Optional metadata
-   *
-   * @example
-   * stateManager.setAccentColor('#ff0000');
    */
   setAccentColor(color, options = {}) {
+    this.log.enter("setAccentColor", { color });
+
     this.editorState.set("theme.accentColor", color, {
       reason: options.reason || "accent color changed",
     });
+
+    this.log.info("setAccentColor", `✓ Accent color set to '${color}'`);
+    this.log.exit("setAccentColor");
   }
 
   /**
    * Get accent color
    *
    * @returns {string} Current accent color
-   *
-   * @example
-   * const color = stateManager.getAccentColor();
    */
   getAccentColor() {
-    return this.editorState.get("theme.accentColor", "#0066cc");
+    this.log.enter("getAccentColor");
+
+    const color = this.editorState.get("theme.accentColor", "#0066cc");
+
+    this.log.info("getAccentColor", `Accent color: '${color}'`);
+    this.log.exit("getAccentColor");
+
+    return color;
   }
 
   // ==================== UI OPERATIONS ====================
@@ -771,74 +884,88 @@ class StateManager {
   /**
    * Set active UI panel
    *
-   * @param {string} panelName - Panel to activate (properties, layers, etc.)
+   * @param {string} panelName - Panel to activate
    * @param {Object} [options] - Optional metadata
-   *
-   * @example
-   * stateManager.setActivePanel('properties');
-   * stateManager.setActivePanel(null); // Close panel
    */
   setActivePanel(panelName, options = {}) {
+    this.log.enter("setActivePanel", { panelName });
+
     this.editorState.set("ui.activePanel", panelName, {
       reason: options.reason || "active panel changed",
     });
+
+    this.log.info(
+      "setActivePanel",
+      `✓ Active panel set to '${panelName || "none"}'`
+    );
+    this.log.exit("setActivePanel");
   }
 
   /**
    * Get active UI panel
    *
    * @returns {string} Active panel name or null
-   *
-   * @example
-   * const panel = stateManager.getActivePanel();
    */
   getActivePanel() {
-    return this.editorState.get("ui.activePanel", null);
+    this.log.enter("getActivePanel");
+
+    const panel = this.editorState.get("ui.activePanel", null);
+
+    this.log.info("getActivePanel", `Active panel: '${panel || "none"}'`);
+    this.log.exit("getActivePanel");
+
+    return panel;
   }
 
   /**
    * Toggle grid visibility
    *
    * @param {Object} [options] - Optional metadata
-   *
-   * @example
-   * stateManager.toggleGrid();
    */
   toggleGrid(options = {}) {
+    this.log.enter("toggleGrid");
+
     const current = this.editorState.get("ui.showGrid", true);
     this.editorState.set("ui.showGrid", !current, {
       reason: options.reason || "grid visibility toggled",
     });
+
+    this.log.info("toggleGrid", `✓ Grid visibility: ${!current}`);
+    this.log.exit("toggleGrid");
   }
 
   /**
    * Toggle guides visibility
    *
    * @param {Object} [options] - Optional metadata
-   *
-   * @example
-   * stateManager.toggleGuides();
    */
   toggleGuides(options = {}) {
+    this.log.enter("toggleGuides");
+
     const current = this.editorState.get("ui.showGuides", true);
     this.editorState.set("ui.showGuides", !current, {
       reason: options.reason || "guides visibility toggled",
     });
+
+    this.log.info("toggleGuides", `✓ Guides visibility: ${!current}`);
+    this.log.exit("toggleGuides");
   }
 
   /**
    * Toggle snap to grid
    *
    * @param {Object} [options] - Optional metadata
-   *
-   * @example
-   * stateManager.toggleSnapToGrid();
    */
   toggleSnapToGrid(options = {}) {
+    this.log.enter("toggleSnapToGrid");
+
     const current = this.editorState.get("ui.snapToGrid", true);
     this.editorState.set("ui.snapToGrid", !current, {
       reason: options.reason || "snap to grid toggled",
     });
+
+    this.log.info("toggleSnapToGrid", `✓ Snap to grid: ${!current}`);
+    this.log.exit("toggleSnapToGrid");
   }
 
   // ==================== GRAPH QUERIES ====================
@@ -847,69 +974,89 @@ class StateManager {
    * Get all nodes
    *
    * @returns {Array} Array of all node data
-   *
-   * @example
-   * const nodes = stateManager.getAllNodes();
    */
   getAllNodes() {
-    return this.editorState.getAllNodes();
+    this.log.enter("getAllNodes");
+
+    const nodes = this.editorState.getAllNodes();
+
+    this.log.info("getAllNodes", `Returning ${nodes.length} nodes`);
+    this.log.exit("getAllNodes");
+
+    return nodes;
   }
 
   /**
    * Get node by ID
    *
    * @param {string} nodeId - Node to retrieve
-   *
    * @returns {Object} Node data or undefined
-   *
-   * @example
-   * const node = stateManager.getNode('node-1');
    */
   getNode(nodeId) {
-    return this.editorState.getNode(nodeId);
+    this.log.enter("getNode", { nodeId });
+
+    const node = this.editorState.getNode(nodeId);
+
+    if (node) {
+      this.log.info("getNode", `Found node '${nodeId}'`);
+    } else {
+      this.log.warn("getNode", `Node '${nodeId}' not found`);
+    }
+
+    this.log.exit("getNode");
+    return node;
   }
 
   /**
    * Get all edges
    *
    * @returns {Array} Array of all edge data
-   *
-   * @example
-   * const edges = stateManager.getAllEdges();
    */
   getAllEdges() {
-    return this.editorState.getAllEdges();
+    this.log.enter("getAllEdges");
+
+    const edges = this.editorState.getAllEdges();
+
+    this.log.info("getAllEdges", `Returning ${edges.length} edges`);
+    this.log.exit("getAllEdges");
+
+    return edges;
   }
 
   /**
    * Get edge by ID
    *
    * @param {string} edgeId - Edge to retrieve
-   *
    * @returns {Object} Edge data or undefined
-   *
-   * @example
-   * const edge = stateManager.getEdge('edge-1');
    */
   getEdge(edgeId) {
-    return this.editorState.getEdge(edgeId);
+    this.log.enter("getEdge", { edgeId });
+
+    const edge = this.editorState.getEdge(edgeId);
+
+    if (edge) {
+      this.log.info("getEdge", `Found edge '${edgeId}'`);
+    } else {
+      this.log.warn("getEdge", `Edge '${edgeId}' not found`);
+    }
+
+    this.log.exit("getEdge");
+    return edge;
   }
 
   /**
    * Get edges connected to a node
    *
    * @param {string} nodeId - Node to query
-   *
    * @returns {Object} Object with incoming and outgoing edges
-   *
-   * @example
-   * const connections = stateManager.getNodeConnections('node-1');
-   * console.log(connections);
-   * // { incoming: [...], outgoing: [...] }
    */
   getNodeConnections(nodeId) {
+    this.log.enter("getNodeConnections", { nodeId });
+
     const cacheKey = `connections:${nodeId}`;
     if (this.queryCache.has(cacheKey)) {
+      this.log.info("getNodeConnections", "Returning cached result");
+      this.log.exit("getNodeConnections");
       return this.queryCache.get(cacheKey);
     }
 
@@ -927,6 +1074,13 @@ class StateManager {
 
     const result = { incoming, outgoing };
     this.queryCache.set(cacheKey, result);
+
+    this.log.info(
+      "getNodeConnections",
+      `Found ${incoming.length} incoming, ${outgoing.length} outgoing`
+    );
+    this.log.exit("getNodeConnections");
+
     return result;
   }
 
@@ -934,40 +1088,44 @@ class StateManager {
    * Get node count
    *
    * @returns {number} Number of nodes
-   *
-   * @example
-   * const count = stateManager.getNodeCount();
    */
   getNodeCount() {
-    return this.editorState.getAllNodes().length;
+    const count = this.editorState.getAllNodes().length;
+    this.log.info("getNodeCount", `Node count: ${count}`);
+    return count;
   }
 
   /**
    * Get edge count
    *
    * @returns {number} Number of edges
-   *
-   * @example
-   * const count = stateManager.getEdgeCount();
    */
   getEdgeCount() {
-    return this.editorState.getAllEdges().length;
+    const count = this.editorState.getAllEdges().length;
+    this.log.info("getEdgeCount", `Edge count: ${count}`);
+    return count;
   }
 
   /**
    * Get selection count
    *
    * @returns {Object} Count of selected nodes and edges
-   *
-   * @example
-   * const counts = stateManager.getSelectionCount();
-   * console.log(counts); // { nodes: 2, edges: 1 }
    */
   getSelectionCount() {
-    return {
+    this.log.enter("getSelectionCount");
+
+    const counts = {
       nodes: this.getSelectedNodeIds().length,
       edges: this.getSelectedEdgeIds().length,
     };
+
+    this.log.info(
+      "getSelectionCount",
+      `Selection: ${counts.nodes} nodes, ${counts.edges} edges`
+    );
+    this.log.exit("getSelectionCount");
+
+    return counts;
   }
 
   // ==================== DEBUG & INTROSPECTION ====================
@@ -976,12 +1134,11 @@ class StateManager {
    * Get complete state summary
    *
    * @returns {Object} Summary of current state
-   *
-   * @example
-   * const summary = stateManager.getSummary();
    */
   getSummary() {
-    return {
+    this.log.enter("getSummary");
+
+    const summary = {
       canvas: {
         zoom: this.getZoom(),
         pan: this.getPan(),
@@ -1002,15 +1159,19 @@ class StateManager {
       theme: this.getTheme(),
       activePanel: this.getActivePanel(),
     };
+
+    this.log.info("getSummary", "Generated state summary");
+    this.log.exit("getSummary");
+
+    return summary;
   }
 
   /**
    * Print state summary to console
-   *
-   * @example
-   * stateManager.printSummary();
    */
   printSummary() {
+    this.log.enter("printSummary");
+
     const summary = this.getSummary();
     console.log("========== StateManager Summary ==========");
     console.log("Canvas:");
@@ -1035,7 +1196,10 @@ class StateManager {
     console.log(`  Dragging: ${summary.viewport.isDragging}`);
     console.log(`Theme: ${summary.theme}`);
     console.log(`Active Panel: ${summary.activePanel || "none"}`);
-    console.log("=".repeat(41));
+    console.log("=".repeat(42));
+
+    this.log.info("printSummary", "Summary printed to console");
+    this.log.exit("printSummary");
   }
 }
 

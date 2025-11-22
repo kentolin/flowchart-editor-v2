@@ -5,8 +5,10 @@ import { EventBus } from "../events/EventBus.js";
 import { EditorState } from "../state/EditorState.js";
 import { StateManager } from "../state/StateManager.js";
 
+// Core Editor
+import { Editor } from "../Editor.js";
+
 // Views (Rendering)
-import { EditorView } from "../views/EditorView.js";
 import { NodeView } from "../views/NodeView.js";
 import { EdgeView } from "../views/EdgeView.js";
 
@@ -130,18 +132,26 @@ export class ServiceProvider {
       );
 
       // ========================================================================
-      // PHASE 4: VIEW SERVICES
+      // PHASE 4: EDITOR & VIEW SERVICES
       // ========================================================================
-      log.info("Registering Phase 4: View Services");
+      log.info("Registering Phase 4: Editor & View Services");
 
       /**
-       * EditorView - Main SVG canvas and viewport
+       * Editor - Main SVG canvas manager
+       * NOTE: Editor will be initialized with container AFTER registration
+       * The actual DOM element will be passed during initialize()
        */
       container.register(
         "editor",
         (c) => {
-          const editor = new EditorView(c);
-          log.info(" ✓ Instance created: editor");
+          // Editor needs to be created but not initialized yet
+          // We'll pass the container reference for lazy service access
+          const editor = new Editor(
+            c.get("eventBus"),
+            c.get("stateManager"),
+            null // Container will be passed during initialize
+          );
+          log.info(" ✓ Instance created: editor (not initialized yet)");
           return editor;
         },
         { singleton: true }
@@ -323,7 +333,7 @@ export class ServiceProvider {
         phase: 3,
       },
       editor: {
-        dependencies: ["container"],
+        dependencies: ["eventBus", "stateManager"],
         phase: 4,
       },
       nodeView: {

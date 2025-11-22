@@ -4,6 +4,7 @@
   "category": "flowchart",
   "description": "Represents a document or report",
   "icon": "preview.svg",
+  "iconSvg": "<path d=\"M10 2 H30 A4 4 0 0 1 34 6 V34 H10 A4 4 0 0 1 6 30 V6 A4 4 0 0 1 10 2 Z M30 2 V10 H38\"/>",
   "tags": ["flowchart", "document", "report", "file"],
   
   "defaultSize": {

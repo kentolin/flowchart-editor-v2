@@ -1,0 +1,64 @@
+{
+  "id": "container-group",
+  "name": "Group",
+  "type": "group",
+  "category": "containers",
+  "description": "Group container with rounded corners and subtle background for visually grouping related elements",
+  "icon": "preview.svg",
+  "iconSvg": "<rect x=\"2\" y=\"2\" width=\"32\" height=\"32\" rx=\"4\" fill=\"#f5f5f5\" stroke=\"currentColor\" stroke-width=\"2\"/>",
+  "tags": ["container", "group", "collection", "organize", "rounded"],
+  
+  "defaultSize": {
+    "width": 200,
+    "height": 150
+  },
+  
+  "defaultStyle": {
+    "fill": "#f5f5f5",
+    "stroke": "#9e9e9e",
+    "strokeWidth": 2,
+    "opacity": 1,
+    "textColor": "#000000"
+  },
+  
+  "ports": {
+    "enabled": true,
+    "preset": "standard-4",
+    "positions": [
+      { "id": "top", "x": 0.5, "y": 0, "type": "both", "direction": "top" },
+      { "id": "right", "x": 1, "y": 0.5, "type": "both", "direction": "right" },
+      { "id": "bottom", "x": 0.5, "y": 1, "type": "both", "direction": "bottom" },
+      { "id": "left", "x": 0, "y": 0.5, "type": "both", "direction": "left" }
+    ]
+  },
+  
+  "handles": {
+    "enabled": true,
+    "preset": "all-8",
+    "positions": ["n", "ne", "e", "se", "s", "sw", "w", "nw"]
+  },
+  
+  "constraints": {
+    "minWidth": 100,
+    "minHeight": 80,
+    "maxWidth": 2000,
+    "maxHeight": 2000,
+    "aspectRatio": null
+  },
+  
+  "features": {
+    "resizable": true,
+    "rotatable": false,
+    "connectable": true,
+    "groupable": true,
+    "lockable": true,
+    "clonable": true
+  },
+  
+  "metadata": {
+    "version": "1.0.0",
+    "author": "System",
+    "created": "2025-01-01",
+    "updated": "2025-01-01"
+  }
+}

@@ -4,6 +4,7 @@
   "category": "flowchart",
   "description": "Represents data input or output operations",
   "icon": "preview.svg",
+  "iconSvg": "<polygon points=\"10,2 34,2 28,34 4,34\"/>",
   "tags": ["flowchart", "data", "input", "output", "io", "parallelogram"],
   
   "defaultSize": {

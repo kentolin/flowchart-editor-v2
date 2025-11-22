@@ -1,0 +1,64 @@
+{
+  "id": "network-cloud",
+  "name": "Cloud",
+  "type": "cloud",
+  "category": "network",
+  "description": "Cloud shape for representing cloud computing, cloud storage, or network cloud services",
+  "icon": "preview.svg",
+  "iconSvg": "<path d=\"M 10 22 Q 0 22 5 11 Q 5 0 14 7 Q 22 0 27 7 Q 36 7 31 18 Q 36 29 25 29 L 10 29 Q 4 29 10 22 Z\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"/>",
+  "tags": ["network", "cloud", "cloud computing", "cloud storage", "internet"],
+  
+  "defaultSize": {
+    "width": 140,
+    "height": 100
+  },
+  
+  "defaultStyle": {
+    "fill": "#e1f5fe",
+    "stroke": "#0288d1",
+    "strokeWidth": 2,
+    "opacity": 1,
+    "textColor": "#000000"
+  },
+  
+  "ports": {
+    "enabled": true,
+    "preset": "standard-4",
+    "positions": [
+      { "id": "top", "x": 0.5, "y": 0.2, "type": "both", "direction": "top" },
+      { "id": "right", "x": 0.85, "y": 0.5, "type": "both", "direction": "right" },
+      { "id": "bottom", "x": 0.5, "y": 0.8, "type": "both", "direction": "bottom" },
+      { "id": "left", "x": 0.15, "y": 0.5, "type": "both", "direction": "left" }
+    ]
+  },
+  
+  "handles": {
+    "enabled": true,
+    "preset": "all-8",
+    "positions": ["n", "ne", "e", "se", "s", "sw", "w", "nw"]
+  },
+  
+  "constraints": {
+    "minWidth": 80,
+    "minHeight": 60,
+    "maxWidth": 1000,
+    "maxHeight": 1000,
+    "aspectRatio": null
+  },
+  
+  "features": {
+    "resizable": true,
+    "rotatable": false,
+    "connectable": true,
+    "groupable": true,
+    "lockable": true,
+    "clonable": true
+  },
+  
+  "metadata": {
+    "version": "1.0.0",
+    "author": "System",
+    "created": "2025-01-01",
+    "updated": "2025-01-01"
+  }
+}

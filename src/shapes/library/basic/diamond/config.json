@@ -5,6 +5,7 @@
   "category": "basic",
   "description": "Diamond/rhombus shape, commonly used for decision points",
   "icon": "preview.svg",
+  "iconSvg": "<path d=\"M18 2 L34 18 L18 34 L2 18 Z\"/>",
   "tags": ["basic", "geometric", "diamond", "rhombus", "decision"],
   
   "defaultSize": {

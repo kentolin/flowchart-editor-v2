@@ -1,0 +1,62 @@
+{
+  "id": "arrows-double-arrow",
+  "name": "Double Arrow",
+  "type": "double-arrow",
+  "category": "arrows",
+  "description": "Double-headed arrow shape for representing bidirectional flow or two-way relationships",
+  "icon": "preview.svg",
+  "iconSvg": "<line x1=\"6\" y1=\"18\" x2=\"30\" y2=\"18\" stroke=\"currentColor\" stroke-width=\"2\"/><path d=\"M 6 14 L 0 18 L 6 22\" fill=\"currentColor\"/><path d=\"M 30 14 L 36 18 L 30 22\" fill=\"currentColor\"/>",
+  "tags": ["arrow", "double", "bidirectional", "two-way", "flow", "both"],
+  
+  "defaultSize": {
+    "width": 120,
+    "height": 40
+  },
+  
+  "defaultStyle": {
+    "fill": "none",
+    "stroke": "#000000",
+    "strokeWidth": 3,
+    "opacity": 1,
+    "textColor": "#000000"
+  },
+  
+  "ports": {
+    "enabled": true,
+    "preset": "start-end",
+    "positions": [
+      { "id": "start", "x": 0, "y": 0.5, "type": "both", "direction": "left" },
+      { "id": "end", "x": 1, "y": 0.5, "type": "both", "direction": "right" }
+    ]
+  },
+  
+  "handles": {
+    "enabled": true,
+    "preset": "corners-only",
+    "positions": ["nw", "ne", "se", "sw"]
+  },
+  
+  "constraints": {
+    "minWidth": 60,
+    "minHeight": 30,
+    "maxWidth": 1000,
+    "maxHeight": 1000,
+    "aspectRatio": null
+  },
+  
+  "features": {
+    "resizable": true,
+    "rotatable": false,
+    "connectable": true,
+    "groupable": true,
+    "lockable": true,
+    "clonable": true
+  },
+  
+  "metadata": {
+    "version": "1.0.0",
+    "author": "System",
+    "created": "2025-01-01",
+    "updated": "2025-01-01"
+  }
+}

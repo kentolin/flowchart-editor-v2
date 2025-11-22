@@ -1,0 +1,12 @@
+<svg width="36" height="36" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
+  <!-- Main body -->
+  <path d="M 2 2 L 28 2 L 34 8 L 34 34 L 2 34 Z" 
+        fill="#fff9c4" 
+        stroke="#fbc02d" 
+        stroke-width="2"/>
+  <!-- Fold with darker color -->
+  <path d="M 28 2 L 28 8 L 34 8" 
+        fill="#f9a825" 
+        stroke="#fbc02d" 
+        stroke-width="2"/>
+</svg>

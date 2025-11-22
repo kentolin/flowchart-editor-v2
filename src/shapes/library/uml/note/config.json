@@ -1,0 +1,64 @@
+{
+  "id": "uml-note",
+  "name": "Note",
+  "type": "note",
+  "category": "uml",
+  "description": "UML note or comment shape with folded corner for annotations and documentation",
+  "icon": "preview.svg",
+  "iconSvg": "<path d=\"M 2 2 L 28 2 L 34 8 L 34 34 L 2 34 Z\" fill=\"#fff9c4\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M 28 2 L 28 8 L 34 8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"/>",
+  "tags": ["uml", "note", "comment", "annotation", "documentation"],
+  
+  "defaultSize": {
+    "width": 120,
+    "height": 100
+  },
+  
+  "defaultStyle": {
+    "fill": "#fff9c4",
+    "stroke": "#000000",
+    "strokeWidth": 2,
+    "opacity": 1,
+    "textColor": "#000000"
+  },
+  
+  "ports": {
+    "enabled": true,
+    "preset": "standard-4",
+    "positions": [
+      { "id": "top", "x": 0.5, "y": 0, "type": "both", "direction": "top" },
+      { "id": "right", "x": 1, "y": 0.5, "type": "both", "direction": "right" },
+      { "id": "bottom", "x": 0.5, "y": 1, "type": "both", "direction": "bottom" },
+      { "id": "left", "x": 0, "y": 0.5, "type": "both", "direction": "left" }
+    ]
+  },
+  
+  "handles": {
+    "enabled": true,
+    "preset": "all-8",
+    "positions": ["n", "ne", "e", "se", "s", "sw", "w", "nw"]
+  },
+  
+  "constraints": {
+    "minWidth": 80,
+    "minHeight": 60,
+    "maxWidth": 1000,
+    "maxHeight": 1000,
+    "aspectRatio": null
+  },
+  
+  "features": {
+    "resizable": true,
+    "rotatable": false,
+    "connectable": true,
+    "groupable": true,
+    "lockable": true,
+    "clonable": true
+  },
+  
+  "metadata": {
+    "version": "1.0.0",
+    "author": "System",
+    "created": "2025-01-01",
+    "updated": "2025-01-01"
+  }
+}

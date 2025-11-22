@@ -4,6 +4,7 @@
   "category": "flowchart",
   "description": "Represents a decision point or conditional branch (Yes/No, True/False)",
   "icon": "preview.svg",
+  "iconSvg": "<path d=\"M18 2 L34 18 L18 34 L2 18 Z\"/>",
   "tags": ["flowchart", "decision", "conditional", "branch", "diamond"],
   
   "defaultSize": {

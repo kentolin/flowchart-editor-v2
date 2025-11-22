@@ -1,0 +1,7 @@
+<svg width="36" height="36" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
+  <!-- Callout bubble with pointer -->
+  <path d="M 2 2 L 34 2 L 34 24 L 20 24 L 18 32 L 16 24 L 2 24 Z" 
+        fill="#ffffff" 
+        stroke="#000000" 
+        stroke-width="2"/>
+</svg>

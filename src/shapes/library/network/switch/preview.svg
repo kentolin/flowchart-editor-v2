@@ -1,0 +1,12 @@
+<svg width="36" height="36" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
+  <!-- Switch box -->
+  <rect x="2" y="10" width="32" height="16" 
+        fill="none" 
+        stroke="#000000" 
+        stroke-width="2"/>
+  <!-- Indicator lights -->
+  <circle cx="8" cy="18" r="2" fill="#4caf50"/>
+  <circle cx="14" cy="18" r="2" fill="#4caf50"/>
+  <circle cx="22" cy="18" r="2" fill="#4caf50"/>
+  <circle cx="28" cy="18" r="2" fill="#4caf50"/>
+</svg>

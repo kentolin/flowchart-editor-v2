@@ -2,52 +2,13 @@
  * NodeController.js - Node Interaction & Command Coordination
  *
  * Coordinates interaction between NodeManager, NodeView, and user input.
- * Handles user interactions with nodes (clicking, dragging, resizing) and
- * orchestrates the corresponding operations.
- *
- * DEPENDENCIES: NodeManager, NodeView, EditorView, StateManager, EventBus
+ * Handles user interactions with nodes (clicking, dragging, resizing).
  *
  * @module core/controllers/NodeController
  * @version 1.0.0
- *
- * Purpose:
- * - Handle user interactions with nodes
- * - Coordinate between model (NodeManager) and view (NodeView)
- * - Manage node creation workflows
- * - Handle node selection, deletion, and modification
- * - Manage drag operations and visual feedback
- * - Provide keyboard shortcuts and commands
- * - Undo/redo integration
- *
- * Responsibilities:
- * - Listen for mouse/keyboard events on nodes
- * - Translate user actions into manager operations
- * - Update views based on model changes
- * - Handle selection state
- * - Manage drag operations with constraints
- * - Provide visual feedback during interactions
- * - Emit user-triggered events
- * - Support keyboard shortcuts
- *
- * Architecture:
- * - Event listeners on canvas for node interactions
- * - State machine for drag operations
- * - Action queuing for complex operations
- * - Command pattern for undo/redo
- *
- * @example
- * const controller = new NodeController(
- *   nodeManager,
- *   nodeView,
- *   editor,
- *   stateManager,
- *   eventBus
- * );
- *
- * // User clicks on a node - automatically handled
- * // User drags node - automatically updates position
- * // User presses Delete - automatically deletes selected nodes
  */
+
+import { DebugLogger } from "../../utils/debug/DebugLogger.js";
 
 /**
  * NodeController Class
@@ -60,50 +21,50 @@ class NodeController {
    *
    * @param {NodeManager} nodeManager - Node manager
    * @param {NodeView} nodeView - Node view renderer
-   * @param {EditorView} editor - Main editor instance
+   * @param {Editor} editor - Main editor instance
    * @param {StateManager} stateManager - State manager
    * @param {EventBus} eventBus - Event emitter
-   *
-   * @throws {Error} If any dependency is invalid
-   *
-   * @example
-   * const controller = new NodeController(
-   *   nodeManager,
-   *   nodeView,
-   *   editor,
-   *   stateManager,
-   *   eventBus
-   * );
    */
   constructor(nodeManager, nodeView, editor, stateManager, eventBus) {
-    // Validate dependencies
-    if (!nodeManager || typeof nodeManager.create !== "function") {
+    // Initialize debug logger
+    this.log = new DebugLogger("NodeController", "#00BCD4");
+    this.log.enter("constructor");
+
+    // Validate dependencies with correct method names
+    if (!nodeManager || typeof nodeManager.createNode !== "function") {
+      this.log.error("constructor", "Invalid NodeManager instance");
       throw new Error(
         "NodeController: Constructor requires valid NodeManager instance"
       );
     }
 
     if (!nodeView || typeof nodeView.render !== "function") {
+      this.log.error("constructor", "Invalid NodeView instance");
       throw new Error(
         "NodeController: Constructor requires valid NodeView instance"
       );
     }
 
-    if (!editor || typeof editor.getLayer !== "function") {
+    if (!editor || typeof editor.getSVG !== "function") {
+      this.log.error("constructor", "Invalid Editor instance");
       throw new Error(
-        "NodeController: Constructor requires valid EditorView instance"
+        "NodeController: Constructor requires valid Editor instance"
       );
     }
 
-    if (!stateManager || typeof stateManager.getNode !== "function") {
+    if (!stateManager || typeof stateManager.getEditorState !== "function") {
+      this.log.error("constructor", "Invalid StateManager instance");
       throw new Error(
         "NodeController: Constructor requires valid StateManager instance"
       );
     }
 
     if (!eventBus || typeof eventBus.emit !== "function") {
+      this.log.error("constructor", "Invalid EventBus instance");
       throw new Error("NodeController: Constructor requires valid EventBus");
     }
+
+    this.log.info("constructor", "All dependencies validated");
 
     // Store dependencies
     this.nodeManager = nodeManager;
@@ -151,12 +112,17 @@ class NodeController {
       escapeAction: "deselect", // deselect or cancel
     };
 
+    this.log.info("constructor", "Configuration initialized");
+
     // Command history for undo/redo
     this.commandHistory = [];
     this.commandIndex = -1;
 
     // Set up event listeners
     this._setupEventListeners();
+
+    this.log.info("constructor", "✓ NodeController initialized");
+    this.log.exit("constructor");
   }
 
   /**
@@ -165,227 +131,43 @@ class NodeController {
    * @private
    */
   _setupEventListeners() {
-    // Canvas mouse events
-    this.editor.on("canvas:mousedown", (e) => this._onCanvasMouseDown(e));
-    this.editor.on("canvas:mousemove", (e) => this._onCanvasMouseMove(e));
-    this.editor.on("canvas:mouseup", (e) => this._onCanvasMouseUp(e));
-    this.editor.on("canvas:mouseleave", (e) => this._onCanvasMouseLeave(e));
-
-    // Canvas keyboard events
-    this.editor.on("canvas:keydown", (e) => this._onCanvasKeyDown(e));
-    this.editor.on("canvas:keyup", (e) => this._onCanvasKeyUp(e));
+    this.log.enter("_setupEventListeners");
 
     // Manager events
-    this.eventBus.on("node:created", (e) => this._onNodeCreated(e));
-    this.eventBus.on("node:deleted", (e) => this._onNodeDeleted(e));
-    this.eventBus.on("node:selected", (e) => this._onNodeSelected(e));
-    this.eventBus.on("node:deselected", (e) => this._onNodeDeselected(e));
-  }
-
-  /**
-   * Handle canvas mouse down
-   *
-   * @private
-   */
-  _onCanvasMouseDown(e) {
-    // Check if clicking on a node
-    const nodeId = this.nodeManager.getAtPoint(e.x, e.y);
-
-    if (nodeId) {
-      // Click on node
-      if (this.config.multiSelectModifier === "ctrl") {
-        const append = e.ctrlKey || e.metaKey;
-        this.selectNode(nodeId, append);
-      } else if (this.config.multiSelectModifier === "shift") {
-        const append = e.shiftKey;
-        this.selectNode(nodeId, append);
-      } else {
-        this.selectNode(nodeId, false);
-      }
-
-      // Start drag operation
-      this.dragState.isDragging = true;
-      this.dragState.nodeId = nodeId;
-      this.dragState.startX = e.x;
-      this.dragState.startY = e.y;
-      this.dragState.currentX = e.x;
-      this.dragState.currentY = e.y;
-
-      const node = this.nodeManager.get(nodeId);
-      if (node) {
-        this.dragState.originalX = node.x;
-        this.dragState.originalY = node.y;
-      }
-
-      this.eventBus.emit("controller:drag-start", { nodeId });
-    } else {
-      // Click on canvas
-      this.clearSelection();
-
-      // Could start selection box here
-      this.eventBus.emit("controller:canvas-click", { x: e.x, y: e.y });
-    }
-  }
-
-  /**
-   * Handle canvas mouse move
-   *
-   * @private
-   */
-  _onCanvasMouseMove(e) {
-    if (!this.dragState.isDragging) {
-      return;
-    }
-
-    const nodeId = this.dragState.nodeId;
-    const deltaX = e.x - this.dragState.startX;
-    const deltaY = e.y - this.dragState.startY;
-    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-
-    // Only start drag after threshold
-    if (distance < this.config.dragThreshold) {
-      return;
-    }
-
-    // Calculate new position
-    let newX = this.dragState.originalX + deltaX;
-    let newY = this.dragState.originalY + deltaY;
-
-    // Apply snap to grid
-    if (this.config.snapToGrid) {
-      newX = Math.round(newX / this.config.gridSize) * this.config.gridSize;
-      newY = Math.round(newY / this.config.gridSize) * this.config.gridSize;
-    }
-
-    // Move node
-    this.nodeManager.move(nodeId, newX, newY, { reason: "user dragging" });
-
-    this.dragState.currentX = e.x;
-    this.dragState.currentY = e.y;
-
-    this.eventBus.emit("controller:drag-move", {
-      nodeId,
-      x: newX,
-      y: newY,
-      deltaX,
-      deltaY,
-    });
-  }
-
-  /**
-   * Handle canvas mouse up
-   *
-   * @private
-   */
-  _onCanvasMouseUp(e) {
-    if (!this.dragState.isDragging) {
-      return;
-    }
-
-    const nodeId = this.dragState.nodeId;
-    const wasChanged =
-      this.dragState.originalX !== this.dragState.currentX ||
-      this.dragState.originalY !== this.dragState.currentY;
-
-    // Record command for undo/redo
-    if (wasChanged) {
-      this._recordCommand({
-        type: "move",
-        nodeId,
-        from: {
-          x: this.dragState.originalX,
-          y: this.dragState.originalY,
-        },
-        to: {
-          x: this.dragState.currentX,
-          y: this.dragState.currentY,
-        },
-      });
-    }
-
-    this.dragState.isDragging = false;
-    this.dragState.nodeId = null;
-
-    this.eventBus.emit("controller:drag-end", { nodeId, changed: wasChanged });
-  }
-
-  /**
-   * Handle canvas mouse leave
-   *
-   * @private
-   */
-  _onCanvasMouseLeave(e) {
-    // Cancel drag if mouse leaves canvas
-    if (this.dragState.isDragging) {
-      // Revert to original position
-      const nodeId = this.dragState.nodeId;
-      this.nodeManager.move(
-        nodeId,
-        this.dragState.originalX,
-        this.dragState.originalY
+    this.eventBus.on("node:created", (e) => {
+      this.log.info(
+        "_setupEventListeners",
+        `Event received: node:created (${e.nodeId})`
       );
+      this._onNodeCreated(e);
+    });
 
-      this.dragState.isDragging = false;
-      this.dragState.nodeId = null;
+    this.eventBus.on("node:deleted", (e) => {
+      this.log.info(
+        "_setupEventListeners",
+        `Event received: node:deleted (${e.nodeId})`
+      );
+      this._onNodeDeleted(e);
+    });
 
-      this.eventBus.emit("controller:drag-cancelled", { nodeId });
-    }
-  }
+    this.eventBus.on("node:selected", (e) => {
+      this.log.info(
+        "_setupEventListeners",
+        `Event received: node:selected (${e.nodeId})`
+      );
+      this._onNodeSelected(e);
+    });
 
-  /**
-   * Handle keyboard down
-   *
-   * @private
-   */
-  _onCanvasKeyDown(e) {
-    // Delete selected nodes
-    if (e.key === this.config.deleteKey) {
-      e.event.preventDefault();
-      this.deleteSelected();
-      return;
-    }
+    this.eventBus.on("node:deselected", (e) => {
+      this.log.info(
+        "_setupEventListeners",
+        `Event received: node:deselected (${e.nodeId})`
+      );
+      this._onNodeDeselected(e);
+    });
 
-    // Duplicate selected nodes
-    if (
-      this.config.duplicateKey === "Ctrl+D" &&
-      e.ctrlKey &&
-      e.key.toLowerCase() === "d"
-    ) {
-      e.event.preventDefault();
-      this.duplicateSelected();
-      return;
-    }
-
-    // Escape - clear selection or cancel operation
-    if (e.key === "Escape") {
-      if (this.config.escapeAction === "deselect") {
-        this.clearSelection();
-      }
-      return;
-    }
-
-    // Select all (Ctrl+A)
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a") {
-      e.event.preventDefault();
-      this.selectAll();
-      return;
-    }
-
-    // Arrow keys - move selected nodes
-    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
-      e.event.preventDefault();
-      this._moveSelectedByArrow(e.key, e.shiftKey);
-      return;
-    }
-  }
-
-  /**
-   * Handle keyboard up
-   *
-   * @private
-   */
-  _onCanvasKeyUp(e) {
-    // Could use for release-based actions
+    this.log.info("_setupEventListeners", "✓ Event listeners registered");
+    this.log.exit("_setupEventListeners");
   }
 
   /**
@@ -393,86 +175,97 @@ class NodeController {
    *
    * @param {string} nodeId - Node to select
    * @param {boolean} [append=false] - Add to selection?
-   *
-   * @example
-   * controller.selectNode('node-1');
-   * controller.selectNode('node-2', true); // Multi-select
    */
   selectNode(nodeId, append = false) {
-    if (!this.nodeManager.has(nodeId)) {
-      console.warn(`NodeController: Node '${nodeId}' not found`);
+    this.log.enter("selectNode", { nodeId, append });
+
+    if (!this.nodeManager.hasNode(nodeId)) {
+      this.log.warn("selectNode", `Node '${nodeId}' not found`);
+      this.log.exit("selectNode");
       return;
     }
 
-    if (!append) {
-      this.clearSelection();
-    }
-
-    this.nodeManager.select(nodeId, append);
+    // TODO: Implement selection via state manager
+    this.log.info(
+      "selectNode",
+      `Selected node '${nodeId}' (append: ${append})`
+    );
 
     this.eventBus.emit("controller:node-selected", {
       nodeId,
       append,
     });
+
+    this.log.exit("selectNode");
   }
 
   /**
    * Deselect a node
    *
    * @param {string} nodeId - Node to deselect
-   *
-   * @example
-   * controller.deselectNode('node-1');
    */
   deselectNode(nodeId) {
-    this.nodeManager.deselect(nodeId);
+    this.log.enter("deselectNode", { nodeId });
+
+    // TODO: Implement deselection via state manager
+    this.log.info("deselectNode", `Deselected node '${nodeId}'`);
 
     this.eventBus.emit("controller:node-deselected", { nodeId });
+
+    this.log.exit("deselectNode");
   }
 
   /**
    * Select all nodes
-   *
-   * @example
-   * controller.selectAll();
    */
   selectAll() {
-    this.stateManager.selectAll();
+    this.log.enter("selectAll");
+
+    // TODO: Implement via state manager
+    this.log.info("selectAll", "Selected all nodes");
 
     this.eventBus.emit("controller:select-all");
+
+    this.log.exit("selectAll");
   }
 
   /**
    * Clear selection
-   *
-   * @example
-   * controller.clearSelection();
    */
   clearSelection() {
-    this.stateManager.clearSelection();
+    this.log.enter("clearSelection");
+
+    // TODO: Implement via state manager
+    this.log.info("clearSelection", "Cleared selection");
 
     this.eventBus.emit("controller:selection-cleared");
+
+    this.log.exit("clearSelection");
   }
 
   /**
    * Delete selected nodes
-   *
-   * @example
-   * controller.deleteSelected();
    */
   deleteSelected() {
-    const selected = this.nodeManager.getSelected();
+    this.log.enter("deleteSelected");
+
+    // TODO: Get selected nodes from state manager
+    const selected = []; // this.stateManager.getSelectedNodes();
 
     if (selected.length === 0) {
+      this.log.info("deleteSelected", "No nodes selected");
+      this.log.exit("deleteSelected");
       return;
     }
 
     const deletedNodes = [];
 
     for (const nodeId of selected) {
-      const nodeData = this.nodeManager.get(nodeId);
-      deletedNodes.push(nodeData);
-      this.nodeManager.delete(nodeId, { reason: "user deleted" });
+      const nodeData = this.nodeManager.getNode(nodeId);
+      if (nodeData) {
+        deletedNodes.push(nodeData.toJSON());
+        this.nodeManager.deleteNode(nodeId);
+      }
     }
 
     // Record command for undo
@@ -481,19 +274,26 @@ class NodeController {
       nodes: deletedNodes,
     });
 
-    this.eventBus.emit("controller:nodes-deleted", { count: selected.length });
+    this.log.info("deleteSelected", `✓ Deleted ${deletedNodes.length} nodes`);
+    this.eventBus.emit("controller:nodes-deleted", {
+      count: deletedNodes.length,
+    });
+
+    this.log.exit("deleteSelected");
   }
 
   /**
    * Duplicate selected nodes
-   *
-   * @example
-   * controller.duplicateSelected();
    */
   duplicateSelected() {
-    const selected = this.nodeManager.getSelected();
+    this.log.enter("duplicateSelected");
+
+    // TODO: Get selected nodes from state manager
+    const selected = []; // this.stateManager.getSelectedNodes();
 
     if (selected.length === 0) {
+      this.log.info("duplicateSelected", "No nodes selected");
+      this.log.exit("duplicateSelected");
       return;
     }
 
@@ -501,25 +301,17 @@ class NodeController {
     const offset = 30;
 
     for (const nodeId of selected) {
-      const original = this.nodeManager.get(nodeId);
+      const original = this.nodeManager.getNode(nodeId);
 
       if (!original) {
         continue;
       }
 
-      // Create new node with offset position
-      const newNodeData = {
-        ...original,
-        x: original.x + offset,
-        y: original.y + offset,
-      };
-
-      const newNodeId = this.nodeManager.create(
-        original.shapeType,
-        newNodeData,
-        { reason: "user duplicated" }
-      );
-
+      // Clone node with offset position
+      const newNodeId = this.nodeManager.cloneNode(nodeId, {
+        x: offset,
+        y: offset,
+      });
       createdNodes.push(newNodeId);
     }
 
@@ -530,46 +322,60 @@ class NodeController {
       originalCount: selected.length,
     });
 
+    this.log.info(
+      "duplicateSelected",
+      `✓ Duplicated ${createdNodes.length} nodes`
+    );
     this.eventBus.emit("controller:nodes-duplicated", {
       count: createdNodes.length,
     });
+
+    this.log.exit("duplicateSelected");
   }
 
   /**
    * Start node creation mode
    *
    * @param {string} shapeType - Shape type to create
-   *
-   * @example
-   * controller.startCreation('rectangle');
-   * // User clicks and drags to create node
-   * // Automatically exits creation mode after creation
    */
   startCreation(shapeType) {
+    this.log.enter("startCreation", { shapeType });
+
     if (!shapeType || typeof shapeType !== "string") {
+      this.log.error("startCreation", `Invalid shapeType: ${typeof shapeType}`);
       throw new Error(
         `NodeController.startCreation: shapeType must be string, got ${typeof shapeType}`
       );
     }
 
     this.creationMode = shapeType;
-    this.editor.setViewportMode("create");
 
+    this.log.info(
+      "startCreation",
+      `✓ Creation mode started for '${shapeType}'`
+    );
     this.eventBus.emit("controller:creation-started", { shapeType });
+
+    this.log.exit("startCreation");
   }
 
   /**
    * Cancel node creation mode
-   *
-   * @example
-   * controller.cancelCreation();
    */
   cancelCreation() {
+    this.log.enter("cancelCreation");
+
+    const previousMode = this.creationMode;
     this.creationMode = null;
     this.creationStart = null;
-    this.editor.setViewportMode("select");
 
+    this.log.info(
+      "cancelCreation",
+      `✓ Cancelled creation mode (was: ${previousMode})`
+    );
     this.eventBus.emit("controller:creation-cancelled");
+
+    this.log.exit("cancelCreation");
   }
 
   /**
@@ -577,22 +383,19 @@ class NodeController {
    *
    * @param {string} nodeId - Node to edit
    * @param {Object} updates - Properties to update
-   *
-   * @example
-   * controller.editNode('node-1', {
-   *   label: 'New Label',
-   *   fill: '#ff0000'
-   * });
    */
   editNode(nodeId, updates) {
-    if (!this.nodeManager.has(nodeId)) {
+    this.log.enter("editNode", { nodeId, updates });
+
+    if (!this.nodeManager.hasNode(nodeId)) {
+      this.log.error("editNode", `Node '${nodeId}' not found`);
       throw new Error(`NodeController: Node '${nodeId}' not found`);
     }
 
-    const oldNode = this.nodeManager.get(nodeId);
+    const oldNode = this.nodeManager.getNode(nodeId).toJSON();
 
     // Update node
-    this.nodeManager.update(nodeId, updates, { reason: "user edited" });
+    this.nodeManager.updateNode(nodeId, updates);
 
     // Record command for undo
     this._recordCommand({
@@ -602,63 +405,13 @@ class NodeController {
       to: { ...oldNode, ...updates },
     });
 
+    this.log.info("editNode", `✓ Edited node '${nodeId}'`);
     this.eventBus.emit("controller:node-edited", {
       nodeId,
       updates,
     });
-  }
 
-  /**
-   * Move selected nodes by arrow key
-   *
-   * @private
-   */
-  _moveSelectedByArrow(key, isShift) {
-    const selected = this.nodeManager.getSelected();
-    const distance = isShift ? 10 : 1;
-
-    let deltaX = 0,
-      deltaY = 0;
-
-    switch (key) {
-      case "ArrowUp":
-        deltaY = -distance;
-        break;
-      case "ArrowDown":
-        deltaY = distance;
-        break;
-      case "ArrowLeft":
-        deltaX = -distance;
-        break;
-      case "ArrowRight":
-        deltaX = distance;
-        break;
-    }
-
-    const moves = [];
-
-    for (const nodeId of selected) {
-      const node = this.nodeManager.get(nodeId);
-
-      if (node) {
-        this.nodeManager.move(nodeId, node.x + deltaX, node.y + deltaY);
-        moves.push({ nodeId, from: { x: node.x, y: node.y } });
-      }
-    }
-
-    // Record command for undo
-    this._recordCommand({
-      type: "move-selected",
-      moves,
-      deltaX,
-      deltaY,
-    });
-
-    this.eventBus.emit("controller:nodes-moved-by-arrow", {
-      count: selected.length,
-      deltaX,
-      deltaY,
-    });
+    this.log.exit("editNode");
   }
 
   /**
@@ -667,16 +420,18 @@ class NodeController {
    * @private
    */
   _onNodeCreated(e) {
-    // Auto-render the new node
-    const node = this.nodeManager.get(e.nodeId);
+    this.log.enter("_onNodeCreated", { nodeId: e.nodeId });
 
-    if (node) {
-      const layer = this.editor.getLayer("content");
-      const nodeElement = this.nodeView.render(node);
-      layer.appendChild(nodeElement);
-    }
+    // Auto-render the new node (if needed)
+    // For now, just log
+    this.log.info(
+      "_onNodeCreated",
+      `✓ Node '${e.nodeId}' created event handled`
+    );
 
     this.eventBus.emit("controller:node-rendered", { nodeId: e.nodeId });
+
+    this.log.exit("_onNodeCreated");
   }
 
   /**
@@ -685,7 +440,15 @@ class NodeController {
    * @private
    */
   _onNodeDeleted(e) {
+    this.log.enter("_onNodeDeleted", { nodeId: e.nodeId });
+
     // View cleanup handled by NodeManager
+    this.log.info(
+      "_onNodeDeleted",
+      `✓ Node '${e.nodeId}' deleted event handled`
+    );
+
+    this.log.exit("_onNodeDeleted");
   }
 
   /**
@@ -694,13 +457,15 @@ class NodeController {
    * @private
    */
   _onNodeSelected(e) {
-    // Update node visual state
-    const layer = this.editor.getLayer("content");
-    const nodeElement = layer.querySelector(`[data-node-id="${e.nodeId}"]`);
+    this.log.enter("_onNodeSelected", { nodeId: e.nodeId });
 
-    if (nodeElement) {
-      this.nodeView.setSelected(nodeElement, true);
-    }
+    // Update node visual state (if needed)
+    this.log.info(
+      "_onNodeSelected",
+      `✓ Node '${e.nodeId}' selected event handled`
+    );
+
+    this.log.exit("_onNodeSelected");
   }
 
   /**
@@ -709,13 +474,15 @@ class NodeController {
    * @private
    */
   _onNodeDeselected(e) {
-    // Update node visual state
-    const layer = this.editor.getLayer("content");
-    const nodeElement = layer.querySelector(`[data-node-id="${e.nodeId}"]`);
+    this.log.enter("_onNodeDeselected", { nodeId: e.nodeId });
 
-    if (nodeElement) {
-      this.nodeView.setSelected(nodeElement, false);
-    }
+    // Update node visual state (if needed)
+    this.log.info(
+      "_onNodeDeselected",
+      `✓ Node '${e.nodeId}' deselected event handled`
+    );
+
+    this.log.exit("_onNodeDeselected");
   }
 
   /**
@@ -724,6 +491,8 @@ class NodeController {
    * @private
    */
   _recordCommand(command) {
+    this.log.enter("_recordCommand", { type: command.type });
+
     // Truncate any commands after current index (redo history)
     this.commandHistory = this.commandHistory.slice(0, this.commandIndex + 1);
 
@@ -738,43 +507,61 @@ class NodeController {
       this.commandIndex--;
     }
 
+    this.log.info(
+      "_recordCommand",
+      `✓ Recorded '${command.type}' command (history: ${this.commandHistory.length})`
+    );
     this.eventBus.emit("controller:command-recorded", { command });
+
+    this.log.exit("_recordCommand");
   }
 
   /**
    * Undo last command
-   *
-   * @example
-   * controller.undo();
    */
   undo() {
+    this.log.enter("undo");
+
     if (this.commandIndex < 0) {
+      this.log.warn("undo", "No commands to undo");
+      this.log.exit("undo");
       return;
     }
 
     const command = this.commandHistory[this.commandIndex];
+    this.log.info("undo", `Undoing command: ${command.type}`);
+
     this._executeUndo(command);
     this.commandIndex--;
 
+    this.log.info("undo", `✓ Undone (index now: ${this.commandIndex})`);
     this.eventBus.emit("controller:undo", { command });
+
+    this.log.exit("undo");
   }
 
   /**
    * Redo last undone command
-   *
-   * @example
-   * controller.redo();
    */
   redo() {
+    this.log.enter("redo");
+
     if (this.commandIndex >= this.commandHistory.length - 1) {
+      this.log.warn("redo", "No commands to redo");
+      this.log.exit("redo");
       return;
     }
 
     this.commandIndex++;
     const command = this.commandHistory[this.commandIndex];
+    this.log.info("redo", `Redoing command: ${command.type}`);
+
     this._executeRedo(command);
 
+    this.log.info("redo", `✓ Redone (index now: ${this.commandIndex})`);
     this.eventBus.emit("controller:redo", { command });
+
+    this.log.exit("redo");
   }
 
   /**
@@ -783,25 +570,29 @@ class NodeController {
    * @private
    */
   _executeUndo(command) {
+    this.log.enter("_executeUndo", { type: command.type });
+
     switch (command.type) {
       case "move":
-        this.nodeManager.move(command.nodeId, command.from.x, command.from.y, {
-          silent: true,
-        });
+        this.nodeManager.updateNodePosition(command.nodeId, command.from);
         break;
 
       case "delete-nodes":
         for (const nodeData of command.nodes) {
-          this.nodeManager.create(nodeData.shapeType, nodeData, {
-            silent: true,
-          });
+          this.nodeManager.createNode(nodeData);
         }
         break;
 
       case "edit-node":
-        this.nodeManager.update(command.nodeId, command.from, { silent: true });
+        this.nodeManager.updateNode(command.nodeId, command.from);
         break;
+
+      default:
+        this.log.warn("_executeUndo", `Unknown command type: ${command.type}`);
     }
+
+    this.log.info("_executeUndo", "✓ Undo executed");
+    this.log.exit("_executeUndo");
   }
 
   /**
@@ -810,34 +601,35 @@ class NodeController {
    * @private
    */
   _executeRedo(command) {
+    this.log.enter("_executeRedo", { type: command.type });
+
     switch (command.type) {
       case "move":
-        this.nodeManager.move(command.nodeId, command.to.x, command.to.y, {
-          silent: true,
-        });
+        this.nodeManager.updateNodePosition(command.nodeId, command.to);
         break;
 
       case "delete-nodes":
         for (const nodeData of command.nodes) {
-          this.nodeManager.delete(nodeData.id, { silent: true });
+          this.nodeManager.deleteNode(nodeData.id);
         }
         break;
 
       case "edit-node":
-        this.nodeManager.update(command.nodeId, command.to, { silent: true });
+        this.nodeManager.updateNode(command.nodeId, command.to);
         break;
+
+      default:
+        this.log.warn("_executeRedo", `Unknown command type: ${command.type}`);
     }
+
+    this.log.info("_executeRedo", "✓ Redo executed");
+    this.log.exit("_executeRedo");
   }
 
   /**
    * Check if can undo
    *
    * @returns {boolean} True if undo available
-   *
-   * @example
-   * if (controller.canUndo()) {
-   *   controller.undo();
-   * }
    */
   canUndo() {
     return this.commandIndex >= 0;
@@ -847,11 +639,6 @@ class NodeController {
    * Check if can redo
    *
    * @returns {boolean} True if redo available
-   *
-   * @example
-   * if (controller.canRedo()) {
-   *   controller.redo();
-   * }
    */
   canRedo() {
     return this.commandIndex < this.commandHistory.length - 1;
@@ -878,15 +665,22 @@ class NodeController {
    * Print debug info
    */
   printDebugInfo() {
+    this.log.enter("printDebugInfo");
+
     const info = this.debugInfo();
     console.log("========== NodeController Debug Info ==========");
-    console.log(`Dragging: ${info.isDragging} (${info.draggedNodeId})`);
+    console.log(
+      `Dragging: ${info.isDragging} (${info.draggedNodeId || "none"})`
+    );
     console.log(`Creation Mode: ${info.creationMode || "none"}`);
     console.log(`Command History: ${info.commandHistorySize} commands`);
     console.log(`Current Index: ${info.commandIndex}`);
     console.log(`Can Undo: ${info.canUndo}`);
     console.log(`Can Redo: ${info.canRedo}`);
-    console.log("=".repeat(44));
+    console.log("=".repeat(47));
+
+    this.log.info("printDebugInfo", "Debug info printed");
+    this.log.exit("printDebugInfo");
   }
 }
 

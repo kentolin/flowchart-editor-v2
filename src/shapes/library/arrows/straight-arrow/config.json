@@ -1,0 +1,62 @@
+{
+  "id": "arrows-straight-arrow",
+  "name": "Straight Arrow",
+  "type": "straight-arrow",
+  "category": "arrows",
+  "description": "Straight arrow shape with arrowhead for representing direct flow or one-way direction",
+  "icon": "preview.svg",
+  "iconSvg": "<line x1=\"2\" y1=\"18\" x2=\"30\" y2=\"18\" stroke=\"currentColor\" stroke-width=\"2\"/><path d=\"M 26 14 L 34 18 L 26 22\" fill=\"currentColor\"/>",
+  "tags": ["arrow", "straight", "flow", "direction", "one-way", "linear"],
+  
+  "defaultSize": {
+    "width": 120,
+    "height": 40
+  },
+  
+  "defaultStyle": {
+    "fill": "none",
+    "stroke": "#000000",
+    "strokeWidth": 3,
+    "opacity": 1,
+    "textColor": "#000000"
+  },
+  
+  "ports": {
+    "enabled": true,
+    "preset": "start-end",
+    "positions": [
+      { "id": "start", "x": 0, "y": 0.5, "type": "input", "direction": "left" },
+      { "id": "end", "x": 1, "y": 0.5, "type": "output", "direction": "right" }
+    ]
+  },
+  
+  "handles": {
+    "enabled": true,
+    "preset": "corners-only",
+    "positions": ["nw", "ne", "se", "sw"]
+  },
+  
+  "constraints": {
+    "minWidth": 60,
+    "minHeight": 30,
+    "maxWidth": 1000,
+    "maxHeight": 1000,
+    "aspectRatio": null
+  },
+  
+  "features": {
+    "resizable": true,
+    "rotatable": false,
+    "connectable": true,
+    "groupable": true,
+    "lockable": true,
+    "clonable": true
+  },
+  
+  "metadata": {
+    "version": "1.0.0",
+    "author": "System",
+    "created": "2025-01-01",
+    "updated": "2025-01-01"
+  }
+}

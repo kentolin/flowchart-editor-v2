@@ -3,6 +3,10 @@
   "name": "Star",
   "category": "basic",
   "description": "Star shape with configurable points",
+  "type": "star",
+  "icon": "preview.svg",
+  "iconSvg": "<polygon points=\"18,2 22,14 34,14 24,22 28,34 18,26 8,34 12,22 2,14 14,14\"/>",
+  "tags": ["basic", "geometric", "star", "shape"],
   "defaults": {
     "width": 100,
     "height": 100,
