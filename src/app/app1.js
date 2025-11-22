@@ -26,11 +26,6 @@ class FlowchartApp {
     this.log.enter("constructor");
 
     this.container = new ServiceContainer();
-
-    // Connection state for edge creation
-    this.connectingFrom = null;
-    this.resizing = null;
-
     this.log.exit("constructor");
   }
 
@@ -284,6 +279,13 @@ class FlowchartApp {
     this.log.info("setupEditor", "Getting EdgeManager from container...");
     this.edgeManager = this.container.get("edgeManager");
 
+    // Get Controllers from container (optional, but good to have references)
+    this.log.info("setupEditor", "Getting NodeController from container...");
+    this.nodeController = this.container.get("nodeController");
+
+    this.log.info("setupEditor", "Getting EdgeController from container...");
+    this.edgeController = this.container.get("edgeController");
+
     this.log.info(
       "setupEditor",
       "✓ Editor and Managers initialized successfully"
@@ -306,16 +308,21 @@ class FlowchartApp {
         `Shape dropped: ${data.type} at (${data.x}, ${data.y})`
       );
 
-      // ✅ CORRECT: Use NodeManager.createNode() instead of Editor.renderNode()
-      const nodeId = this.nodeManager.createNode(
-        data.type, // Shape type (rect, circle, etc.)
-        data.x, // X position
-        data.y, // Y position
-        {
-          label: data.type.charAt(0).toUpperCase() + data.type.slice(1),
-          style: {},
-        }
-      );
+      // Create node using NodeManager
+      const nodeData = {
+        type: data.type,
+        x: data.x,
+        y: data.y,
+        width: 120,
+        height: 60,
+        label: data.type.charAt(0).toUpperCase() + data.type.slice(1),
+        style: {},
+      };
+
+      // Render the node on the editor
+      const nodeId = `node_${Date.now()}`;
+      const shapeDefinition = this.shapeRegistry.getDefinition(data.type);
+      this.editor.renderNode(nodeId, nodeData, shapeDefinition);
 
       this.log.info("setupEventHandlers", `✓ Node created: ${nodeId}`);
     });
@@ -328,13 +335,6 @@ class FlowchartApp {
         "setupEventHandlers",
         `Canvas clicked at (${point.x}, ${point.y})`
       );
-
-      // If we're in connecting mode, cancel connection
-      if (this.connectingFrom) {
-        this.log.info("setupEventHandlers", "Cancelling edge creation");
-        this.connectingFrom = null;
-        this.stateManager.setViewportMode("select");
-      }
 
       // Hide all resize handles
       const allHandles =
@@ -382,124 +382,7 @@ class FlowchartApp {
         portPosition: data.portPosition,
       };
 
-      this.log.info(
-        "setupEventHandlers",
-        "Edge creation mode started - waiting for target port click"
-      );
-    });
-
-    // ========================================================================
-    // SECOND PORT CLICK - Complete edge creation
-    // ========================================================================
-    this.ui.editorContainer.addEventListener("click", (e) => {
-      // Only if we're in connecting mode
-      if (!this.connectingFrom) return;
-      if (
-        this.stateManager.getViewportMode &&
-        this.stateManager.getViewportMode() !== "connecting"
-      )
-        return;
-
-      // Check if clicked on a port
-      const portElement = e.target.closest(".port");
-
-      if (!portElement) {
-        // Clicked elsewhere - cancel connection
-        this.log.info(
-          "setupEventHandlers",
-          "Cancelling edge creation - clicked outside port"
-        );
-        this.connectingFrom = null;
-        this.stateManager.setViewportMode("select");
-        return;
-      }
-
-      // Get target port info
-      const targetNodeId = portElement.getAttribute("data-node-id");
-      const targetPortId = portElement.getAttribute("data-port-id");
-
-      if (!targetNodeId || !targetPortId) {
-        this.log.warn(
-          "setupEventHandlers",
-          "Invalid port element - missing data attributes"
-        );
-        return;
-      }
-
-      // Don't connect to same node
-      if (targetNodeId === this.connectingFrom.nodeId) {
-        this.log.info("setupEventHandlers", "Cannot connect node to itself");
-        this.connectingFrom = null;
-        this.stateManager.setViewportMode("select");
-        return;
-      }
-
-      this.log.info(
-        "setupEventHandlers",
-        `Creating edge: ${this.connectingFrom.nodeId}[${this.connectingFrom.portId}] -> ${targetNodeId}[${targetPortId}]`
-      );
-
-      // Create the edge using EdgeManager
-      if (this.edgeManager && this.edgeManager.createEdge) {
-        const edgeId = this.edgeManager.createEdge(
-          this.connectingFrom.nodeId,
-          targetNodeId,
-          this.connectingFrom.portId,
-          targetPortId
-        );
-
-        if (edgeId) {
-          this.log.info("setupEventHandlers", `✓ Edge created: ${edgeId}`);
-        } else {
-          this.log.error("setupEventHandlers", "Failed to create edge");
-        }
-      } else {
-        this.log.error(
-          "setupEventHandlers",
-          "EdgeManager.createEdge not available"
-        );
-      }
-
-      // Reset connection state
-      this.connectingFrom = null;
-      this.stateManager.setViewportMode("select");
-    });
-
-    // ========================================================================
-    // NODE MOVED EVENT - Update connected edges
-    // ========================================================================
-    this.eventBus.on("node:moved", (data) => {
-      this.log.info(
-        "setupEventHandlers",
-        `Node moved: ${data.nodeId} to (${data.x}, ${data.y})`
-      );
-
-      // Update connected edges if EdgeManager exists
-      if (this.edgeManager && this.edgeManager.updateNodeEdges) {
-        this.edgeManager.updateNodeEdges(data.nodeId);
-      }
-    });
-
-    // ========================================================================
-    // NODE DRAGGING EVENT - Update connected edges in real-time
-    // ========================================================================
-    this.eventBus.on("node:dragging", (data) => {
-      // Update connected edges during drag for smooth feedback
-      if (this.edgeManager && this.edgeManager.updateNodeEdges) {
-        this.edgeManager.updateNodeEdges(data.nodeId);
-      }
-    });
-
-    // ========================================================================
-    // NODE RESIZED EVENT - Update connected edges
-    // ========================================================================
-    this.eventBus.on("node:resized", (data) => {
-      this.log.info("setupEventHandlers", `Node resized: ${data.nodeId}`);
-
-      // Update connected edges
-      if (this.edgeManager && this.edgeManager.updateNodeEdges) {
-        this.edgeManager.updateNodeEdges(data.nodeId);
-      }
+      this.log.info("setupEventHandlers", "Edge creation mode started");
     });
 
     // ========================================================================
@@ -521,16 +404,6 @@ class FlowchartApp {
 
       // Set mode to resizing
       this.stateManager.setViewportMode("resizing");
-    });
-
-    // ========================================================================
-    // NODE RESIZING EVENT - Update edges during resize
-    // ========================================================================
-    this.eventBus.on("node:resizing", (data) => {
-      // Update connected edges during resize for smooth feedback
-      if (this.edgeManager && this.edgeManager.updateNodeEdges) {
-        this.edgeManager.updateNodeEdges(data.nodeId);
-      }
     });
 
     // ========================================================================
@@ -564,26 +437,6 @@ class FlowchartApp {
       this.stateManager.setViewportMode("editing");
 
       // TODO: Show text editor for node label
-      // For now, just use prompt
-      const newLabel = prompt("Enter new label:", data.nodeData.label);
-      if (newLabel && newLabel.trim()) {
-        this.nodeManager.updateNode(data.nodeId, { label: newLabel.trim() });
-        this.stateManager.setViewportMode("select");
-      } else {
-        this.stateManager.setViewportMode("select");
-      }
-    });
-
-    // ========================================================================
-    // NODE DELETED EVENT - Remove connected edges
-    // ========================================================================
-    this.eventBus.on("node:deleted", (data) => {
-      this.log.info("setupEventHandlers", `Node deleted: ${data.nodeId}`);
-
-      // Remove all edges connected to this node
-      if (this.edgeManager && this.edgeManager.removeNodeEdges) {
-        this.edgeManager.removeNodeEdges(data.nodeId);
-      }
     });
 
     // ========================================================================
@@ -599,58 +452,6 @@ class FlowchartApp {
       // this.showContextMenu(data.clientX, data.clientY);
     });
 
-    // ========================================================================
-    // KEYBOARD SHORTCUTS
-    // ========================================================================
-    document.addEventListener("keydown", (e) => {
-      // Delete key - delete selected nodes
-      if (e.key === "Delete" || e.key === "Backspace") {
-        const selectedNodes = this.stateManager.getSelectedNodes();
-        if (selectedNodes && selectedNodes.length > 0) {
-          e.preventDefault();
-          selectedNodes.forEach((nodeId) => {
-            this.nodeManager.removeNode(nodeId);
-          });
-          this.log.info(
-            "setupEventHandlers",
-            `Deleted ${selectedNodes.length} node(s)`
-          );
-        }
-      }
-
-      // Escape key - cancel current operation
-      if (e.key === "Escape") {
-        if (this.connectingFrom) {
-          this.connectingFrom = null;
-          this.stateManager.setViewportMode("select");
-          this.log.info(
-            "setupEventHandlers",
-            "Cancelled edge creation via Escape"
-          );
-        }
-      }
-
-      // Ctrl+Z - Undo (if history manager exists)
-      if (e.ctrlKey && e.key === "z") {
-        e.preventDefault();
-        // TODO: Implement undo
-        this.log.info(
-          "setupEventHandlers",
-          "Undo requested (not yet implemented)"
-        );
-      }
-
-      // Ctrl+Y - Redo (if history manager exists)
-      if (e.ctrlKey && e.key === "y") {
-        e.preventDefault();
-        // TODO: Implement redo
-        this.log.info(
-          "setupEventHandlers",
-          "Redo requested (not yet implemented)"
-        );
-      }
-    });
-
     this.log.info("setupEventHandlers", "✓ All event handlers registered");
     this.log.exit("setupEventHandlers");
   }
@@ -663,63 +464,23 @@ class FlowchartApp {
   }
 
   /**
-   * Get the node manager
-   */
-  getNodeManager() {
-    return this.nodeManager;
-  }
-
-  /**
-   * Get the edge manager
-   */
-  getEdgeManager() {
-    return this.edgeManager;
-  }
-
-  /**
-   * Get the editor
-   */
-  getEditor() {
-    return this.editor;
-  }
-
-  /**
-   * Get the state manager
-   */
-  getStateManager() {
-    return this.stateManager;
-  }
-
-  /**
    * Destroy the application
    */
   destroy() {
     this.log.enter("destroy");
-
-    // Clear connection state
-    this.connectingFrom = null;
-    this.resizing = null;
-
-    // Destroy managers
-    if (this.nodeManager) {
-      this.nodeManager.clearAll();
-    }
 
     if (this.editor) {
       this.editor.destroy();
     }
 
     // Clear all event listeners
-    if (this.eventBus) {
-      this.eventBus.clear();
-    }
+    this.eventBus.clear();
 
     this.log.info("destroy", "✓ Application destroyed");
     this.log.exit("destroy");
   }
 }
 
-// Auto-initialize when DOM is ready
 if (typeof window !== "undefined") {
   const startApp = async () => {
     const loader = document.getElementById("loading-overlay");
@@ -730,10 +491,9 @@ if (typeof window !== "undefined") {
         loader.style.display = "flex";
       }
 
-      app = new FlowchartApp({ debug: true }); // Set to false in production
+      app = new FlowchartApp({ debug: false });
       await app.initialize();
 
-      // Expose app to window for debugging
       window.flowchartApp = app;
 
       console.log(
@@ -741,22 +501,15 @@ if (typeof window !== "undefined") {
         "color: #4CAF50; font-size: 16px; font-weight: bold;"
       );
       console.log("Access the app via: window.flowchartApp");
-      console.log("Available methods:");
-      console.log("  - window.flowchartApp.getNodeManager()");
-      console.log("  - window.flowchartApp.getEdgeManager()");
-      console.log("  - window.flowchartApp.getEditor()");
-      console.log("  - window.flowchartApp.editor.fitToView()");
+      console.log("Try: window.flowchartApp.editor.fitToView()");
     } catch (error) {
       console.error(
         "%c✗ Initialization Failed",
         "color: #F44336; font-size: 16px; font-weight: bold;"
       );
-      if (app && app.log) {
+      if (app && app.log)
         app.log.error("Error initializing FlowchartApp:", error);
-      } else {
-        console.error("Error initializing FlowchartApp:", error);
-      }
-      console.error(error.stack);
+      else console.error("Error initializing FlowchartApp:", error);
     } finally {
       if (loader) {
         loader.classList.add("hide");
