@@ -1,17 +1,18 @@
 import { DebugLogger } from "../../utils/debug/DebugLogger.js";
+import { ShapeDefinition } from "../registry/ShapeDefinition.js";
+
 /**
  * ShapeLoader.js - Dynamic Shape Loader
  *
- * Loads shape classes and configurations dynamically.
- * Supports loading from built-in library and custom directories.
+ * Loads shape classes and config.json files dynamically.
+ * Creates ShapeDefinition objects and registers them in ShapeRegistry.
  *
  * @module shapes/loader/ShapeLoader
  */
-
 export class ShapeLoader {
   constructor(shapeRegistry, options = {}) {
     this.log = DebugLogger.for(this);
-    this.log.enter("constructor", { shapeRegistry, options });
+    this.log.enter("constructor");
 
     this.registry = shapeRegistry;
 
@@ -29,7 +30,7 @@ export class ShapeLoader {
 
   /**
    * Load a shape by type
-   * @param {string} type - Shape type
+   * @param {string} type - Shape type (e.g., 'basic-rect')
    * @param {string} modulePath - Path to shape module
    * @param {string} configPath - Path to config JSON
    * @returns {Promise<boolean>}
@@ -39,7 +40,7 @@ export class ShapeLoader {
 
     // Check if already loaded
     if (this.loaded.has(type)) {
-      this.log.warn(`Shape '${type}' is already loaded`);
+      this.log.warn(`Shape '${type}' already loaded`);
       this.log.exit("loadShape", true);
       return true;
     }
@@ -54,9 +55,15 @@ export class ShapeLoader {
     this.loading.add(type);
 
     try {
+      // Load config.json
+      this.log.debug(`Loading config for '${type}' from '${configPath}'`);
+      const config = await this._loadConfig(configPath);
+
       // Load shape class
       this.log.debug(`Importing module for '${type}' from '${modulePath}'`);
       const shapeModule = await import(modulePath);
+
+      // Get shape class (try default export first, then named export)
       const ShapeClass =
         shapeModule.default || shapeModule[this._getShapeClassName(type)];
 
@@ -64,18 +71,25 @@ export class ShapeLoader {
         throw new Error(`Shape class not found in module: ${modulePath}`);
       }
 
-      // Load config
-      this.log.debug(`Loading config for '${type}' from '${configPath}'`);
-      const config = await this._loadConfig(configPath);
+      // Validate shape class has render method
+      if (typeof ShapeClass.render !== "function") {
+        throw new Error(`Shape class '${type}' missing static render() method`);
+      }
+
+      // Create ShapeDefinition
+      const shapeDefinition = new ShapeDefinition(config, ShapeClass);
 
       // Validate if enabled
       if (this.validateOnLoad) {
         this.log.debug(`Validating shape '${type}'...`);
-        this._validateShape(type, ShapeClass, config);
+        const validation = shapeDefinition.validate();
+        if (!validation.valid) {
+          throw new Error(`Validation failed: ${validation.errors.join(", ")}`);
+        }
       }
 
       // Register with registry
-      const success = this.registry.register(type, ShapeClass, config);
+      const success = this.registry.register(type, shapeDefinition);
       if (!success) {
         throw new Error(`ShapeRegistry failed to register shape '${type}'`);
       }
@@ -83,17 +97,16 @@ export class ShapeLoader {
       // Mark as loaded
       this.loaded.add(type);
       this.loading.delete(type);
-      this.failed.delete(type); // Remove from failed list if it's a reload
+      this.failed.delete(type); // Remove from failed list if re-loading
 
-      this.log.info(`Successfully loaded and registered shape '${type}'`);
+      this.log.info(`✓ Successfully loaded shape '${type}'`);
       this.log.exit("loadShape", true);
-
       return true;
     } catch (error) {
       this.loading.delete(type);
       this.failed.set(type, error);
 
-      this.log.error(`Failed to load shape '${type}':`, error);
+      this.log.error(`✗ Failed to load shape '${type}':`, error.message);
 
       if (this.throwOnError) {
         throw error;
@@ -111,7 +124,7 @@ export class ShapeLoader {
    * @returns {Promise<Object>}
    */
   async loadCategory(category, shapes) {
-    this.log.enter("loadCategory", { category, shapes });
+    this.log.enter("loadCategory", { category, shapesCount: shapes.length });
 
     const results = {
       category,
@@ -133,22 +146,24 @@ export class ShapeLoader {
           results.loaded++;
         } else {
           results.failed++;
-          results.errors.push({ type: shape.type, error: "Load failed" });
+          results.errors.push({
+            type: shape.type,
+            error: this.failed.get(shape.type)?.message || "Load failed",
+          });
         }
       } catch (error) {
-        this.log.error(
-          `Critical error loading shape '${shape.type}' in category '${category}'`,
-          error
-        );
         results.failed++;
         results.errors.push({ type: shape.type, error: error.message });
       }
     });
 
     await Promise.all(loadPromises);
-    this.log.info(`Category '${category}' load complete`, results);
-    this.log.exit("loadCategory", results);
 
+    this.log.info(`Category '${category}' load complete`, {
+      loaded: results.loaded,
+      failed: results.failed,
+    });
+    this.log.exit("loadCategory", results);
     return results;
   }
 
@@ -158,7 +173,7 @@ export class ShapeLoader {
    * @returns {Promise<Object>}
    */
   async loadLibrary(libraryConfig) {
-    this.log.enter("loadLibrary", { libraryConfig });
+    this.log.enter("loadLibrary");
 
     const results = {
       totalCategories: 0,
@@ -172,7 +187,9 @@ export class ShapeLoader {
       results.totalCategories++;
       results.totalShapes += shapes.length;
 
-      this.log.stage(`Loading category: '${category}'`);
+      this.log.stage(
+        `Loading category: '${category}' (${shapes.length} shapes)`
+      );
       const categoryResult = await this.loadCategory(category, shapes);
 
       results.loaded += categoryResult.loaded;
@@ -180,21 +197,25 @@ export class ShapeLoader {
       results.categories[category] = categoryResult;
     }
 
-    this.log.info("Library load complete", results);
+    this.log.info("✓ Library load complete", {
+      loaded: results.loaded,
+      failed: results.failed,
+      total: results.totalShapes,
+    });
     this.log.exit("loadLibrary", results);
     return results;
   }
 
   /**
    * Load built-in shapes from JSON configuration file
-   * @param {string} configPath - Path to shapes configuration JSON file
+   * @param {string} configPath - Path to shapes configuration JSON
    * @returns {Promise<Object>}
    */
   async loadBuiltInShapes(configPath = "/src/shapes/loader/shapes.json") {
     this.log.enter("loadBuiltInShapes", { configPath });
 
     try {
-      // Load the shapes configuration file
+      // Load shapes configuration file
       this.log.debug(`Loading shapes configuration from: ${configPath}`);
       const response = await fetch(configPath);
 
@@ -209,7 +230,7 @@ export class ShapeLoader {
         `Shapes configuration loaded: version ${shapesConfig.version}`
       );
 
-      // Use basePath from config or fallback to parameter
+      // Use basePath from config
       const basePath = shapesConfig.basePath || "/src/shapes/library";
 
       // Convert JSON format to libraryConfig format
@@ -232,7 +253,7 @@ export class ShapeLoader {
       this.log.exit("loadBuiltInShapes", result);
       return result;
     } catch (error) {
-      this.log.error("Failed to load built-in shapes:", error);
+      this.log.error("✗ Failed to load built-in shapes:", error.message);
 
       if (this.throwOnError) {
         throw error;
@@ -252,9 +273,6 @@ export class ShapeLoader {
   /**
    * Convert shapes.json format to internal libraryConfig format
    * @private
-   * @param {Object} categories - Categories object from shapes.json
-   * @param {string} basePath - Base path for shape files
-   * @returns {Object} libraryConfig object
    */
   _convertToLibraryConfig(categories, basePath) {
     this.log.enter("_convertToLibraryConfig", { basePath });
@@ -277,36 +295,54 @@ export class ShapeLoader {
   }
 
   /**
-   * Load custom shapes from a specified directory
-   * @param {string} customPath - Path to custom shapes directory
-   * @returns {Promise<Object>}
+   * Load config JSON
+   * @private
    */
-  async loadCustomShapes(customPath) {
-    this.log.enter("loadCustomShapes", { customPath });
-    // This would scan the custom directory and load shapes
-    // For now, return empty result
-    this.log.info("loadCustomShapes not implemented, returning empty result");
-    const result = {
-      category: "custom",
-      total: 0,
-      loaded: 0,
-      failed: 0,
-      errors: [],
-    };
-    this.log.exit("loadCustomShapes", result);
-    return result;
+  async _loadConfig(configPath) {
+    try {
+      const response = await fetch(configPath);
+
+      if (!response.ok) {
+        throw new Error(`Failed to load config: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      throw new Error(
+        `Failed to load config from ${configPath}: ${error.message}`
+      );
+    }
   }
 
   /**
-   * Reload a shape by type
+   * Get shape class name from type
+   * @private
+   */
+  _getShapeClassName(type) {
+    // Split by hyphen: 'basic-rect' -> ['basic', 'rect']
+    const parts = type.split("-");
+
+    // Skip first part (category) and capitalize remaining parts
+    const nameParts = parts.slice(1);
+
+    const className = nameParts
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+      .join("");
+
+    return `${className}Shape`;
+  }
+
+  /**
+   * Reload a shape
    * @param {string} type - Shape type
    * @param {string} modulePath - Path to shape module
    * @param {string} configPath - Path to config JSON
    * @returns {Promise<boolean>}
    */
   async reloadShape(type, modulePath, configPath) {
-    this.log.enter("reloadShape", { type, modulePath, configPath });
+    this.log.enter("reloadShape", { type });
     this.log.warn(`Reloading shape '${type}'`);
+
     // Unregister existing shape
     this.registry.unregister(type);
     this.loaded.delete(type);
@@ -320,7 +356,7 @@ export class ShapeLoader {
 
   /**
    * Check if a shape is loaded
-   * @param {string} type - Shape type
+   * @param {string} type
    * @returns {boolean}
    */
   isLoaded(type) {
@@ -329,7 +365,7 @@ export class ShapeLoader {
 
   /**
    * Get loading error for a shape
-   * @param {string} type - Shape type
+   * @param {string} type
    * @returns {Error|null}
    */
   getLoadError(type) {
@@ -366,135 +402,6 @@ export class ShapeLoader {
   }
 
   /**
-   * Load shape config JSON
-   * @param {string} configPath - Path to config JSON
-   * @returns {Promise<Object>}
-   * @private
-   */
-  async _loadConfig(configPath) {
-    this.log.enter("_loadConfig", { configPath });
-
-    try {
-      // For JSON files, we need to fetch and parse
-      const response = await fetch(configPath);
-
-      if (!response.ok) {
-        throw new Error(`Failed to load config: ${response.statusText}`);
-      }
-
-      const config = await response.json();
-      this.log.exit("_loadConfig", config);
-      return config;
-    } catch (error) {
-      this.log.warn(
-        `Fetch config failed for ${configPath}, trying import...`,
-        error
-      );
-      // Try dynamic import as fallback
-      try {
-        const configModule = await import(configPath, {
-          assert: { type: "json" },
-        });
-        const config = configModule.default;
-        this.log.exit("_loadConfig", config);
-        return config;
-      } catch (importError) {
-        this.log.error(`Failed to load config from ${configPath}`, importError);
-        throw new Error(
-          `Failed to load config from ${configPath}: ${importError.message}`
-        );
-      }
-    }
-  }
-
-  /**
-   * Validate shape definition
-   * @param {string} type - Shape type
-   * @param {Function} ShapeClass - Shape class constructor
-   * @param {Object} config - Shape configuration object
-   * @return {boolean}
-   * @private
-   */
-  _validateShape(type, ShapeClass, config) {
-    this.log.enter("_validateShape", { type, ShapeClass, config });
-
-    // Check shape class
-    if (typeof ShapeClass !== "function") {
-      this.log.error(
-        `Validation Failed: Shape class must be a constructor function`
-      );
-      throw new Error(`Shape class must be a constructor function`);
-    }
-
-    // Check config has required fields
-    const requiredFields = ["id", "name", "category"];
-
-    for (const field of requiredFields) {
-      if (!config[field]) {
-        this.log.error(
-          `Validation Failed: Config missing required field: ${field}`
-        );
-        throw new Error(`Config missing required field: ${field}`);
-      }
-    }
-
-    // Check type matches config id
-    if (config.id !== type) {
-      this.log.warn(
-        `Shape type '${type}' does not match config id '${config.id}'`
-      );
-    }
-
-    // Validate defaultSize
-    if (config.defaultSize) {
-      if (
-        typeof config.defaultSize.width !== "number" ||
-        typeof config.defaultSize.height !== "number"
-      ) {
-        this.log.error(
-          `Validation Failed: defaultSize must have numeric width and height`
-        );
-        throw new Error(`defaultSize must have numeric width and height`);
-      }
-    }
-
-    // Validate defaultStyle
-    if (config.defaultStyle) {
-      if (typeof config.defaultStyle !== "object") {
-        this.log.error(`Validation Failed: defaultStyle must be an object`);
-        throw new Error(`defaultStyle must be an object`);
-      }
-    }
-
-    this.log.exit("_validateShape", true);
-    return true;
-  }
-
-  /**
-   * Get shape class name from type
-   * @param {string} type - Shape type
-   * @returns {string}
-   * @private
-   */
-  _getShapeClassName(type) {
-    // Split by hyphen: 'flowchart-manual-input' -> ['flowchart', 'manual', 'input']
-    const parts = type.split("-");
-
-    // Skip first part (category) and take the rest as the shape name
-    // Join remaining parts with proper casing
-    const nameParts = parts.slice(1); // Remove category prefix
-
-    const className = nameParts
-      .map((part) => {
-        // Capitalize first letter of each part
-        return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
-      })
-      .join(""); // Join without separator for PascalCase
-
-    return `${className}Shape`;
-  }
-
-  /**
    * Clear loader state
    */
   clear() {
@@ -509,11 +416,9 @@ export class ShapeLoader {
   /**
    * Serialize loader state to JSON
    * @returns {Object}
-   *
    */
   toJSON() {
-    this.log.enter("toJSON");
-    const json = {
+    return {
       loaded: Array.from(this.loaded),
       failed: Array.from(this.failed.entries()).map(([type, error]) => ({
         type,
@@ -522,7 +427,5 @@ export class ShapeLoader {
       loading: Array.from(this.loading),
       stats: this.getStats(),
     };
-    this.log.exit("toJSON", json);
-    return json;
   }
 }

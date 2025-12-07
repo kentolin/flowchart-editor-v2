@@ -1,14 +1,25 @@
 import { DebugLogger, DebugControl } from "../utils/debug/DebugLogger.js";
 import { DOMUtils } from "../utils/dom/dom.js";
-import { ServiceContainer, ServiceProvider } from "../core/container/index.js";
+import { ServiceContainer } from "../core/container/ServiceContainer.js";
+import { ServiceProvider } from "../core/container/ServiceProvider.js";
 import { ShapeLoader } from "../shapes/loader/index.js";
+
+// UI Components
 import { ToolBar } from "../ui/bars/ToolBar.js";
 import { MenuBar } from "../ui/bars/MenuBar.js";
 import { StatusBar } from "../ui/bars/StatusBar.js";
 import { LeftPalette } from "../ui/panels/LeftPalette.js";
 import { RightInspector, LayersPanel, MiniMap } from "../ui/panels/Panels.js";
 
-class FlowchartApp {
+/**
+ * FlowchartApp - Main Application Class
+ *
+ * Initializes the flowchart editor application, sets up the UI,
+ * and manages core services via a dependency injection container.
+ *
+ * @module app/FlowchartApp
+ */
+export class FlowchartApp {
   constructor(options = {}) {
     this.options = {
       theme: "light",
@@ -16,59 +27,114 @@ class FlowchartApp {
       ...options,
     };
 
+    // Enable debug mode if requested
     if (this.options.debug) {
       DebugControl.enableGlobal();
     } else {
       DebugControl.disableGlobal();
     }
-    this.log = DebugLogger.for(this);
 
+    this.log = new DebugLogger("FlowchartApp", "#E91E63");
+    this.log.enable();
     this.log.enter("constructor");
 
+    // Dependency Injection Container
     this.container = new ServiceContainer();
+
+    // UI
+    this.ui = {};
 
     // Connection state for edge creation
     this.connectingFrom = null;
     this.resizing = null;
 
+    this.log.info("constructor", "✓ FlowchartApp instance created");
     this.log.exit("constructor");
   }
 
   async initialize() {
-    this.log.enter("Initialization started");
+    this.log.enter("initialize");
 
-    // Step 1: Create DOM Structure for the App
-    this.log.stage("Creating DOM structure");
-    this.createDOMStructure();
+    try {
+      // Step 1: Create DOM structure
+      this.log.info("initialize", "Step 1: Creating DOM structure...");
+      this.createDOMStructure();
 
-    // Step 2: Register Services
-    this.log.stage("Registering services");
-    ServiceProvider.register(this.container);
+      // Step 2: Register services with DI container
+      this.log.info("initialize", "Step 2: Registering services...");
+      ServiceProvider.register(this.container);
 
-    // Step 3: Retrieve Core Services
-    this.log.stage("Getting core services");
-    this.eventBus = this.container.get("eventBus");
-    this.shapeRegistry = this.container.get("shapeRegistry");
-    this.stateManager = this.container.get("stateManager");
+      // Step 3: Resolve core services using container.get()
+      this.log.info("initialize", "Step 3: Resolving core services...");
+      this.eventBus = this.container.get("eventBus");
+      this.editorState = this.container.get("editorState"); // For debugging only
+      this.stateManager = this.container.get("stateManager"); // ← Main interface
+      this.shapeRegistry = this.container.get("shapeRegistry");
 
-    // Step 4: Load Built-in Shapes
-    this.log.stage("Loading built-in shapes");
-    const shapeLoader = new ShapeLoader(this.shapeRegistry);
-    await shapeLoader.loadBuiltInShapes();
+      this.log.info("initialize", "✓ Core services resolved");
+      this.log.info("initialize", "  - EventBus: ✓");
+      this.log.info("initialize", "  - EditorState: ✓ (storage layer)");
+      this.log.info("initialize", "  - StateManager: ✓ (API layer - USE THIS)");
+      this.log.info("initialize", "  - ShapeRegistry: ✓");
 
-    // Step 5: Setup UI
-    this.log.stage("Setting up UI");
-    this.setupUI();
+      // Step 4: Load shapes
+      this.log.info("initialize", "Step 4: Loading shapes...");
+      const shapeLoader = new ShapeLoader(this.shapeRegistry);
+      await shapeLoader.loadBuiltInShapes();
+      const shapeStats = this.shapeRegistry.getStats();
+      this.log.info(
+        "initialize",
+        `✓ Loaded ${shapeStats.totalShapes} shapes across ${
+          Object.keys(shapeStats.categories).length
+        } categories`
+      );
 
-    // Step 6: Get Editor, NodeManager, EdgeManager and Initialize Editor
-    this.log.stage("Initializing Editor and Managers");
-    this.setupEditor();
+      // Step 5: Setup UI components
+      this.log.info("initialize", "Step 5: Setting up UI...");
+      this.setupUI();
 
-    // Step 7: Setup event handlers
-    this.log.stage("Setting up event handlers");
-    this.setupEventHandlers();
+      // Step 6: Setup editor and managers
+      this.log.info("initialize", "Step 6: Setting up editor and managers...");
+      this.setupEditor();
 
-    this.log.exit("Initialization completed");
+      // Step 7: Setup event handlers
+      this.log.info("initialize", "Step 7: Setting up event handlers...");
+      this.setupEventHandlers();
+
+      // Step 8: Initial state setup
+      this.log.info("initialize", "Step 8: Setting initial state...");
+      this.stateManager.setTheme(this.options.theme);
+      this.stateManager.setZoom(1.0);
+      this.stateManager.setPan(0, 0);
+
+      this.log.info("initialize", "");
+      this.log.info("initialize", "✅ FlowchartApp initialized successfully!");
+      this.log.info("initialize", "");
+      this.log.info("initialize", "State Management Architecture:");
+      this.log.info(
+        "initialize",
+        "  EditorState = Storage (Maps, Sets, objects)"
+      );
+      this.log.info(
+        "initialize",
+        "  StateManager = API (ONLY interface to state)"
+      );
+      this.log.info(
+        "initialize",
+        "  ⚠️  Use stateManager for ALL state operations"
+      );
+      this.log.info("initialize", "");
+
+      this.log.exit("initialize");
+      return true;
+    } catch (error) {
+      this.log.error(
+        "initialize",
+        `❌ Initialization failed: ${error.message}`
+      );
+      this.log.error("initialize", error.stack);
+      throw error;
+    }
   }
 
   createDOMStructure() {
@@ -76,8 +142,7 @@ class FlowchartApp {
 
     const appContainer = document.getElementById("app");
     if (!appContainer) {
-      this.log.error("App container not found");
-      return;
+      throw new Error("Container element #app not found");
     }
 
     // Create top-level container
@@ -257,6 +322,7 @@ class FlowchartApp {
     const miniMap = new MiniMap(this.eventBus, this.stateManager);
     miniMap.initialize(this.ui.miniMap);
 
+    this.log.info("setupUI", "✓ UI components initialized");
     this.log.exit("setupUI");
   }
 
@@ -266,28 +332,15 @@ class FlowchartApp {
   setupEditor() {
     this.log.enter("setupEditor");
 
-    // Get Editor instance from container
-    this.log.info("setupEditor", "Getting Editor from container...");
+    // Resolve editor using container.get()
     this.editor = this.container.get("editor");
+    this.editor.initialize(this.ui.editorContainer);
+    this.log.info("setupEditor", "✓ Editor initialized");
 
-    // Set the container reference on the editor
-    this.editor.container = this.ui.editorContainer;
-
-    // Initialize the editor with the DOM element
-    this.log.info("setupEditor", "Initializing Editor...");
-    this.editor.initialize();
-
-    // Get Managers from container
-    this.log.info("setupEditor", "Getting NodeManager from container...");
+    // Resolve managers using container.get()
     this.nodeManager = this.container.get("nodeManager");
-
-    this.log.info("setupEditor", "Getting EdgeManager from container...");
     this.edgeManager = this.container.get("edgeManager");
-
-    this.log.info(
-      "setupEditor",
-      "✓ Editor and Managers initialized successfully"
-    );
+    this.log.info("setupEditor", "✓ Managers resolved");
     this.log.exit("setupEditor");
   }
 
@@ -353,6 +406,28 @@ class FlowchartApp {
     this.eventBus.on("node:selected", (data) => {
       this.log.info("setupEventHandlers", `Node selected: ${data.nodeId}`);
 
+      // Hide all other handles first
+      const allHandles =
+        this.editor.nodeLayer.querySelectorAll(".handles-group");
+      allHandles.forEach((group) => {
+        group.style.display = "none";
+      });
+
+      // Show handles for selected node
+      const selectedNode = this.editor.nodeLayer.querySelector(
+        `[data-node-id="${data.nodeId}"]`
+      );
+      if (selectedNode) {
+        const handlesGroup = selectedNode.querySelector(".handles-group");
+        if (handlesGroup) {
+          handlesGroup.style.display = "block";
+          this.log.info(
+            "setupEventHandlers",
+            `✓ Resize handles shown for node ${data.nodeId}`
+          );
+        }
+      }
+
       // Update state manager
       this.stateManager.selectNode(data.nodeId);
 
@@ -375,23 +450,71 @@ class FlowchartApp {
       // Start edge creation mode
       this.stateManager.setViewportMode("connecting");
 
-      // Store source node and port information
-      this.connectingFrom = {
-        nodeId: data.nodeId,
-        portId: data.portId,
-        portPosition: data.portPosition,
-      };
-
-      this.log.info(
-        "setupEventHandlers",
-        "Edge creation mode started - waiting for target port click"
+      // Get the port element to find its position
+      const portElement = this.editor.nodeLayer.querySelector(
+        `.port[data-node-id="${data.nodeId}"][data-port-id="${data.portId}"]`
       );
+
+      if (portElement) {
+        const portRect = portElement.getBoundingClientRect();
+        const svgRect = this.editor.svg.getBoundingClientRect();
+
+        // Convert screen coordinates to SVG coordinates
+        const startPoint = this.editor.screenToSVG(
+          portRect.left + portRect.width / 2,
+          portRect.top + portRect.height / 2
+        );
+
+        // Store source node and port information
+        this.connectingFrom = {
+          nodeId: data.nodeId,
+          portId: data.portId,
+          portPosition: data.portPosition,
+          startX: startPoint.x,
+          startY: startPoint.y,
+          previewLine: null,
+        };
+
+        // Create preview line
+        this.connectingFrom.previewLine = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "line"
+        );
+        this.connectingFrom.previewLine.setAttribute("x1", startPoint.x);
+        this.connectingFrom.previewLine.setAttribute("y1", startPoint.y);
+        this.connectingFrom.previewLine.setAttribute("x2", startPoint.x);
+        this.connectingFrom.previewLine.setAttribute("y2", startPoint.y);
+        this.connectingFrom.previewLine.setAttribute("stroke", "#2196F3");
+        this.connectingFrom.previewLine.setAttribute("stroke-width", "2");
+        this.connectingFrom.previewLine.setAttribute("stroke-dasharray", "5,5");
+        this.connectingFrom.previewLine.setAttribute("pointer-events", "none");
+        this.connectingFrom.previewLine.setAttribute("class", "edge-preview");
+
+        // Add to overlay layer
+        this.editor.overlayLayer.appendChild(this.connectingFrom.previewLine);
+
+        this.log.info(
+          "setupEventHandlers",
+          "Edge creation mode started - preview line created"
+        );
+      }
+    });
+
+    // ========================================================================
+    // MOUSE MOVE - Update edge preview during drag
+    // ========================================================================
+    this.ui.editorContainer.addEventListener("mousemove", (e) => {
+      if (this.connectingFrom && this.connectingFrom.previewLine) {
+        const svgPoint = this.editor.screenToSVG(e.clientX, e.clientY);
+        this.connectingFrom.previewLine.setAttribute("x2", svgPoint.x);
+        this.connectingFrom.previewLine.setAttribute("y2", svgPoint.y);
+      }
     });
 
     // ========================================================================
     // SECOND PORT CLICK - Complete edge creation
     // ========================================================================
-    this.ui.editorContainer.addEventListener("click", (e) => {
+    this.ui.editorContainer.addEventListener("mouseup", (e) => {
       // Only if we're in connecting mode
       if (!this.connectingFrom) return;
       if (
@@ -409,6 +532,12 @@ class FlowchartApp {
           "setupEventHandlers",
           "Cancelling edge creation - clicked outside port"
         );
+
+        // Remove preview line
+        if (this.connectingFrom && this.connectingFrom.previewLine) {
+          this.editor.overlayLayer.removeChild(this.connectingFrom.previewLine);
+        }
+
         this.connectingFrom = null;
         this.stateManager.setViewportMode("select");
         return;
@@ -429,6 +558,12 @@ class FlowchartApp {
       // Don't connect to same node
       if (targetNodeId === this.connectingFrom.nodeId) {
         this.log.info("setupEventHandlers", "Cannot connect node to itself");
+
+        // Remove preview line
+        if (this.connectingFrom.previewLine) {
+          this.editor.overlayLayer.removeChild(this.connectingFrom.previewLine);
+        }
+
         this.connectingFrom = null;
         this.stateManager.setViewportMode("select");
         return;
@@ -458,6 +593,11 @@ class FlowchartApp {
           "setupEventHandlers",
           "EdgeManager.createEdge not available"
         );
+      }
+
+      // Remove preview line
+      if (this.connectingFrom && this.connectingFrom.previewLine) {
+        this.editor.overlayLayer.removeChild(this.connectingFrom.previewLine);
       }
 
       // Reset connection state
@@ -621,6 +761,13 @@ class FlowchartApp {
       // Escape key - cancel current operation
       if (e.key === "Escape") {
         if (this.connectingFrom) {
+          // Remove preview line
+          if (this.connectingFrom.previewLine) {
+            this.editor.overlayLayer.removeChild(
+              this.connectingFrom.previewLine
+            );
+          }
+
           this.connectingFrom = null;
           this.stateManager.setViewportMode("select");
           this.log.info(
@@ -730,7 +877,7 @@ if (typeof window !== "undefined") {
         loader.style.display = "flex";
       }
 
-      app = new FlowchartApp({ debug: true }); // Set to false in production
+      app = new FlowchartApp({ debug: false }); // Set to false in production
       await app.initialize();
 
       // Expose app to window for debugging

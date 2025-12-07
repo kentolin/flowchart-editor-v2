@@ -1,18 +1,18 @@
 /**
- * ShapeDefinition.js - Shape metadata and configuration
+ * ShapeDefinition.js - Shape metadata wrapper
  *
- * Holds metadata about a shape including its configuration,
- * default values, and registration info.
+ * Simplified wrapper that holds both config.json data AND the shape class reference.
+ * Used by NodeView to get shape rendering function and configuration.
  *
  * @module shapes/registry/ShapeDefinition
  */
-
 export class ShapeDefinition {
   /**
-   * Create a new shape definition
-   * @param {Object} config - Shape definition configuration
+   * Create a shape definition
+   * @param {Object} config - Configuration from config.json
+   * @param {Class} shapeClass - Shape class with static render() method
    */
-  constructor(config) {
+  constructor(config, shapeClass = null) {
     // Basic info
     this.id = config.id;
     this.name = config.name;
@@ -20,11 +20,11 @@ export class ShapeDefinition {
     this.category = config.category || "basic";
     this.description = config.description || "";
     this.icon = config.icon || null;
+    this.iconSvg = config.iconSvg || null;
     this.tags = config.tags || [];
 
-    // Shape class
-    this.shapeClass = config.shapeClass || null;
-    this.classPath = config.classPath || null;
+    // Shape class reference
+    this.shapeClass = shapeClass;
 
     // Default configuration
     this.defaultSize = {
@@ -92,14 +92,47 @@ export class ShapeDefinition {
       updated: config.metadata?.updated || new Date().toISOString(),
       ...config.metadata,
     };
-
-    // Registration info
-    this.registered = false;
-    this.registeredAt = null;
   }
 
   /**
-   * Get default configuration for creating this shape
+   * Set shape class (called by ShapeLoader after loading)
+   * @param {Class} shapeClass - Shape class constructor
+   */
+  setShapeClass(shapeClass) {
+    this.shapeClass = shapeClass;
+  }
+
+  /**
+   * Check if shape class is loaded
+   * @returns {boolean}
+   */
+  isClassLoaded() {
+    return this.shapeClass !== null && this.shapeClass !== undefined;
+  }
+
+  /**
+   * Render shape (delegates to shape class)
+   * @param {number} width - Width
+   * @param {number} height - Height
+   * @param {Object} style - Style object
+   * @returns {SVGElement} - Shape SVG element
+   */
+  render(width, height, style) {
+    if (!this.isClassLoaded()) {
+      throw new Error(`Shape class not loaded for type '${this.type}'`);
+    }
+
+    if (typeof this.shapeClass.render !== "function") {
+      throw new Error(
+        `Shape class '${this.type}' missing static render() method`
+      );
+    }
+
+    return this.shapeClass.render(width, height, style);
+  }
+
+  /**
+   * Get default configuration for creating nodes
    * @returns {Object}
    */
   getDefaultConfig() {
@@ -120,80 +153,21 @@ export class ShapeDefinition {
   }
 
   /**
-   * Create a shape instance with custom config
-   * @param {Object} customConfig - Custom configuration to merge
-   * @returns {BaseShape}
+   * Get default ports or fallback to standard 4-port configuration
+   * @returns {Array} - Array of port definitions
    */
-  createInstance(customConfig = {}) {
-    if (!this.shapeClass) {
-      throw new Error(`Shape class not loaded for type '${this.type}'`);
+  getDefaultPorts() {
+    if (this.ports.positions && this.ports.positions.length > 0) {
+      return this.ports.positions;
     }
 
-    const config = {
-      ...this.getDefaultConfig(),
-      ...customConfig,
-    };
-
-    return new this.shapeClass(config);
-  }
-
-  /**
-   * Set shape class
-   * @param {Function} shapeClass - Shape class constructor
-   */
-  setShapeClass(shapeClass) {
-    this.shapeClass = shapeClass;
-  }
-
-  /**
-   * Check if shape class is loaded
-   * @returns {boolean}
-   */
-  isClassLoaded() {
-    return this.shapeClass !== null;
-  }
-
-  /**
-   * Mark as registered
-   */
-  markAsRegistered() {
-    this.registered = true;
-    this.registeredAt = new Date().toISOString();
-  }
-
-  /**
-   * Check if shape matches search criteria
-   * @param {string} query - Search query
-   * @returns {boolean}
-   */
-  matches(query) {
-    const searchString = query.toLowerCase();
-
-    return (
-      this.id.toLowerCase().includes(searchString) ||
-      this.name.toLowerCase().includes(searchString) ||
-      this.category.toLowerCase().includes(searchString) ||
-      this.description.toLowerCase().includes(searchString) ||
-      this.tags.some((tag) => tag.toLowerCase().includes(searchString))
-    );
-  }
-
-  /**
-   * Check if shape is in category
-   * @param {string} category - Category name
-   * @returns {boolean}
-   */
-  isInCategory(category) {
-    return this.category === category;
-  }
-
-  /**
-   * Check if shape has tag
-   * @param {string} tag - Tag name
-   * @returns {boolean}
-   */
-  hasTag(tag) {
-    return this.tags.includes(tag);
+    // Fallback to standard 4-port configuration
+    return [
+      { id: "top", x: 0.5, y: 0, type: "both", direction: "top" },
+      { id: "right", x: 1, y: 0.5, type: "both", direction: "right" },
+      { id: "bottom", x: 0.5, y: 1, type: "both", direction: "bottom" },
+      { id: "left", x: 0, y: 0.5, type: "both", direction: "left" },
+    ];
   }
 
   /**
@@ -204,23 +178,15 @@ export class ShapeDefinition {
     const errors = [];
 
     // Required fields
-    if (!this.id) {
-      errors.push("Shape id is required");
-    }
-    if (!this.name) {
-      errors.push("Shape name is required");
-    }
-    if (!this.type) {
-      errors.push("Shape type is required");
-    }
+    if (!this.id) errors.push("Shape id is required");
+    if (!this.name) errors.push("Shape name is required");
+    if (!this.type) errors.push("Shape type is required");
 
     // Size validation
-    if (this.defaultSize.width <= 0) {
+    if (this.defaultSize.width <= 0)
       errors.push("Default width must be positive");
-    }
-    if (this.defaultSize.height <= 0) {
+    if (this.defaultSize.height <= 0)
       errors.push("Default height must be positive");
-    }
 
     // Constraint validation
     if (this.constraints.minWidth > this.constraints.maxWidth) {
@@ -230,22 +196,12 @@ export class ShapeDefinition {
       errors.push("minHeight cannot be greater than maxHeight");
     }
 
-    // Port validation
-    if (this.ports.enabled && this.ports.positions.length === 0) {
-      errors.push("Ports enabled but no port positions defined");
+    // Shape class validation
+    if (!this.isClassLoaded()) {
+      errors.push("Shape class not loaded");
+    } else if (typeof this.shapeClass.render !== "function") {
+      errors.push("Shape class missing static render() method");
     }
-
-    this.ports.positions.forEach((port, index) => {
-      if (!port.id) {
-        errors.push(`Port ${index} missing id`);
-      }
-      if (typeof port.x !== "number" || port.x < 0 || port.x > 1) {
-        errors.push(`Port ${port.id || index} x must be between 0 and 1`);
-      }
-      if (typeof port.y !== "number" || port.y < 0 || port.y > 1) {
-        errors.push(`Port ${port.id || index} y must be between 0 and 1`);
-      }
-    });
 
     return {
       valid: errors.length === 0,
@@ -257,7 +213,7 @@ export class ShapeDefinition {
    * Serialize to JSON
    * @returns {Object}
    */
-  serialize() {
+  toJSON() {
     return {
       id: this.id,
       name: this.name,
@@ -265,6 +221,7 @@ export class ShapeDefinition {
       category: this.category,
       description: this.description,
       icon: this.icon,
+      iconSvg: this.iconSvg,
       tags: [...this.tags],
       defaultSize: { ...this.defaultSize },
       defaultStyle: { ...this.defaultStyle },
@@ -281,30 +238,12 @@ export class ShapeDefinition {
       constraints: { ...this.constraints },
       features: { ...this.features },
       metadata: { ...this.metadata },
-      registered: this.registered,
-      registeredAt: this.registeredAt,
+      classLoaded: this.isClassLoaded(),
     };
   }
 
   /**
-   * Create from JSON
-   * @param {Object} data - Serialized data
-   * @returns {ShapeDefinition}
-   */
-  static deserialize(data) {
-    return new ShapeDefinition(data);
-  }
-
-  /**
-   * Clone definition
-   * @returns {ShapeDefinition}
-   */
-  clone() {
-    return ShapeDefinition.deserialize(this.serialize());
-  }
-
-  /**
-   * Get info for display
+   * Get info for display (palette, inspector)
    * @returns {Object}
    */
   getInfo() {
@@ -316,8 +255,8 @@ export class ShapeDefinition {
       description: this.description,
       tags: this.tags,
       icon: this.icon,
+      iconSvg: this.iconSvg,
       features: this.features,
-      registered: this.registered,
     };
   }
 }

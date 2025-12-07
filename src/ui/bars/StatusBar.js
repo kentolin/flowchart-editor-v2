@@ -98,9 +98,8 @@ export class StatusBar {
   }
 
   _updateStats() {
-    const state = this.stateManager.getState();
-    const nodeCount = state.nodes?.count || 0;
-    const edgeCount = state.edges?.count || 0;
+    const nodeCount = this.stateManager.getNodeCount();
+    const edgeCount = this.stateManager.getEdgeCount();
 
     const statsEl = this.sections.get("stats");
     if (statsEl) {

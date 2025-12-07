@@ -1,52 +1,38 @@
+/**
+ * FirewallShape - Brick pattern rectangle
+ */
 export class FirewallShape {
-  constructor(config) {
-    this.id = config.id || "firewall";
-    this.type = "firewall";
-  }
-  render(container, node) {
-    const { x, y, width, height } = node;
+  static render(width, height, style) {
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+
+    // Background rect
     const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    rect.setAttribute("x", x);
-    rect.setAttribute("y", y);
     rect.setAttribute("width", width);
     rect.setAttribute("height", height);
-    rect.setAttribute("fill", node.style?.fill || "#ffebee");
-    rect.setAttribute("stroke", node.style?.stroke || "#d32f2f");
-    rect.setAttribute("stroke-width", node.style?.strokeWidth || 3);
-    container.appendChild(rect);
-    const path = `M ${x + width / 2 - 15} ${y + height / 2 + 10} L ${
-      x + width / 2
-    } ${y + height / 2 - 15} L ${x + width / 2 + 15} ${y + height / 2 + 10}`;
-    const flame = document.createElementNS(
-      "http://www.w3.org/2000/svg",
-      "path"
-    );
-    flame.setAttribute("d", path);
-    flame.setAttribute("fill", "none");
-    flame.setAttribute("stroke", "#ff5722");
-    flame.setAttribute("stroke-width", 3);
-    container.appendChild(flame);
-    if (node.label) {
-      const text = document.createElementNS(
+    rect.setAttribute("fill", style.fill || "#ffffff");
+    rect.setAttribute("stroke", style.stroke || "#424242");
+    rect.setAttribute("stroke-width", style.strokeWidth || 2);
+    g.appendChild(rect);
+
+    // Brick pattern
+    const rows = 4;
+    const rowHeight = height / rows;
+    for (let i = 1; i < rows; i++) {
+      const line = document.createElementNS(
         "http://www.w3.org/2000/svg",
-        "text"
+        "line"
       );
-      text.setAttribute("x", x + width / 2);
-      text.setAttribute("y", y + height + 15);
-      text.setAttribute("text-anchor", "middle");
-      text.setAttribute("fill", node.style?.textColor || "#000000");
-      text.textContent = node.label;
-      container.appendChild(text);
+      line.setAttribute("x1", 0);
+      line.setAttribute("y1", i * rowHeight);
+      line.setAttribute("x2", width);
+      line.setAttribute("y2", i * rowHeight);
+      line.setAttribute("stroke", style.stroke || "#424242");
+      line.setAttribute("stroke-width", 1);
+      g.appendChild(line);
     }
-    return container;
-  }
-  getConnectionPoints(node) {
-    const { x, y, width, height } = node;
-    return [
-      { id: "top", x: x + width / 2, y: y },
-      { id: "right", x: x + width, y: y + height / 2 },
-      { id: "bottom", x: x + width / 2, y: y + height },
-      { id: "left", x: x, y: y + height / 2 },
-    ];
+
+    return g;
   }
 }
+
+export default FirewallShape;

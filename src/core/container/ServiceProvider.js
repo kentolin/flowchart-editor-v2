@@ -1,398 +1,272 @@
-// Core Event System
-import { EventBus } from "../events/EventBus.js";
+/**
+ * ServiceProvider.js - Dependency Injection and Service Registration
+ *
+ * Registers all application services with the ServiceContainer in correct dependency order.
+ * Uses existing ServiceContainer.js with get() method.
+ *
+ * @module core/container/ServiceProvider
+ * @version 5.0.0 - Uses ServiceContainer with get()
+ */
 
-// State Management
+import { DebugLogger } from "../../utils/debug/DebugLogger.js";
+import { EventBus } from "../events/EventBus.js";
 import { EditorState } from "../state/EditorState.js";
 import { StateManager } from "../state/StateManager.js";
-
-// Core Editor
-import { Editor } from "../Editor.js";
-
-// Views (Rendering)
-import { NodeView } from "../views/NodeView.js";
-import { EdgeView } from "../views/EdgeView.js";
-
-// Shape System
 import { ShapeRegistry } from "../../shapes/registry/ShapeRegistry.js";
-import { ShapeBuilder } from "../../shapes/builder/ShapeBuilder.js";
-
-// Managers (Business Logic)
+import { Editor } from "../editor/Editor.js";
 import { NodeManager } from "../managers/NodeManager.js";
 import { EdgeManager } from "../managers/EdgeManager.js";
 
-// Controllers (User Interaction)
-import { NodeController } from "../controllers/NodeController.js";
-import { EdgeController } from "../controllers/EdgeController.js";
-
-// Debugging & Logging
-import { DebugLogger } from "../../utils/debug/DebugLogger.js";
-
-/**
- * ServiceProvider
- *
- * Responsible for registering all services into the ServiceContainer.
- * Organizes services into phases to manage dependencies effectively.
- */
-
 export class ServiceProvider {
   /**
-   * Register all services into the provided ServiceContainer
+   * Register all services with the container
    *
-   * @static
-   * @param {ServiceContainer} container - The service container to register services into
+   * @param {ServiceContainer} container - DI container
    */
   static register(container) {
-    const log = new DebugLogger("ServiceProvider");
+    const log = new DebugLogger("ServiceProvider", "#9C27B0");
+    log.enter("register");
 
+    // Validate container
     if (!container || typeof container.register !== "function") {
-      const errorMsg =
-        "ServiceProvider.register: Requires valid ServiceContainer instance";
-      log.error(errorMsg);
-      throw new Error(errorMsg);
+      log.error("register", "Invalid container - missing register() method");
+      throw new Error("ServiceProvider: Invalid container provided");
     }
 
-    try {
-      log.stage("Starting service registration...");
+    log.info("register", "Starting service registration in 5 phases...");
 
-      // ========================================================================
-      // PHASE 1: CORE SERVICES
-      // ========================================================================
-      log.info("Registering Phase 1: Core Services");
+    // ========================================================================
+    // PHASE 1: Core Infrastructure (No dependencies)
+    // ========================================================================
+    log.info("register", "━━━ Phase 1: Core Infrastructure ━━━");
 
-      /**
-       * EventBus - Central event system
-       * All components communicate through this
-       */
-      container.register("eventBus", () => {
+    // EventBus - No dependencies
+    container.register(
+      "eventBus",
+      (c) => {
+        log.info("register", "  [1/1] Creating EventBus...");
         const eventBus = new EventBus();
-        log.info(" ✓ Instance of EventBus created.");
+        log.info("register", "  ✓ EventBus created");
         return eventBus;
-      });
+      },
+      { singleton: true, description: "Global event bus for pub/sub" }
+    );
 
-      // ========================================================================
-      // PHASE 2: STATE SERVICES
-      // ========================================================================
-      log.info("Registering Phase 2: State Services");
+    log.info("register", "✓ Phase 1 complete: EventBus");
 
-      /**
-       * EditorState - Core state container
-       */
-      container.register(
-        "editorState",
-        (c) => {
-          const editorState = new EditorState(c.get("eventBus"));
-          log.info(" ✓ Instance of EditorState created.");
-          return editorState;
-        },
-        { singleton: true }
-      );
+    // ========================================================================
+    // PHASE 2: State Management Layer
+    // ========================================================================
+    log.info("register", "━━━ Phase 2: State Management ━━━");
 
-      /**
-       * StateManager - State coordination API
-       */
-      container.register(
-        "stateManager",
-        (c) => {
-          const stateManager = new StateManager(c.get("editorState"));
-          log.info(" ✓ Instance of StateManager created.");
-          return stateManager;
-        },
-        { singleton: true }
-      );
+    // EditorState - Depends on EventBus
+    container.register(
+      "editorState",
+      (c) => {
+        log.info("register", "  [1/2] Creating EditorState...");
+        const eventBus = c.get("eventBus");
+        const editorState = new EditorState(eventBus);
+        log.info("register", "  ✓ EditorState created (Pure Storage)");
+        return editorState;
+      },
+      { singleton: true, description: "Low-level state storage" }
+    );
 
-      // ========================================================================
-      // PHASE 3: SHAPE SERVICES
-      // ========================================================================
-      log.info("Registering Phase 3: Shape Services");
+    // StateManager - Depends on EditorState (wraps it)
+    container.register(
+      "stateManager",
+      (c) => {
+        log.info("register", "  [2/2] Creating StateManager...");
+        const editorState = c.get("editorState");
+        const stateManager = new StateManager(editorState);
+        log.info(
+          "register",
+          "  ✓ StateManager created (Direct Manipulation API)"
+        );
+        return stateManager;
+      },
+      { singleton: true, description: "High-level state management API" }
+    );
 
-      /**
-       * ShapeRegistry - Shape definitions and factory
-       */
-      container.register(
-        "shapeRegistry",
-        () => {
-          const shapeRegistry = new ShapeRegistry();
-          log.info(" ✓ Instance of ShapeRegistry created.");
-          return shapeRegistry;
-        },
-        { singleton: true }
-      );
+    log.info("register", "✓ Phase 2 complete: EditorState → StateManager");
 
-      /**
-       * ShapeBuilder - Shape instance factory
-       */
-      container.register(
-        "shapeBuilder",
-        (c) => {
-          const shapeBuilder = new ShapeBuilder(c.get("shapeRegistry"));
-          log.info(" ✓ Instance of ShapeBuilder created.");
-          return shapeBuilder;
-        },
-        { singleton: true }
-      );
+    // ========================================================================
+    // PHASE 3: Shape System
+    // ========================================================================
+    log.info("register", "━━━ Phase 3: Shape System ━━━");
 
-      // ========================================================================
-      // PHASE 4: EDITOR & VIEW SERVICES
-      // ========================================================================
-      log.info("Registering Phase 4: Editor & View Services");
+    // ShapeRegistry - No dependencies
+    container.register(
+      "shapeRegistry",
+      (c) => {
+        log.info("register", "  [1/1] Creating ShapeRegistry...");
+        const shapeRegistry = new ShapeRegistry();
+        log.info("register", "  ✓ ShapeRegistry created");
+        return shapeRegistry;
+      },
+      { singleton: true, description: "Registry for all shape definitions" }
+    );
 
-      /**
-       * Editor - Main SVG canvas manager
-       * NOTE: Editor will be initialized with container AFTER registration
-       * The actual DOM element will be passed during initialize()
-       */
-      container.register(
-        "editor",
-        (c) => {
-          // Editor needs to be created but not initialized yet
-          // We'll pass the container reference for lazy service access
-          const editor = new Editor(
-            c.get("eventBus"),
-            c.get("stateManager"),
-            null // Container will be passed during initialize
-          );
-          log.info(" ✓ Instance created: editor (not initialized yet)");
-          return editor;
-        },
-        { singleton: true }
-      );
+    log.info("register", "✓ Phase 3 complete: ShapeRegistry");
 
-      /**
-       * NodeView - Node visual rendering
-       */
-      container.register(
-        "nodeView",
-        (c) => {
-          const nodeView = new NodeView(c.get("shapeBuilder"));
-          log.info(" ✓ Instance created: nodeView");
-          return nodeView;
-        },
-        { singleton: true }
-      );
+    // ========================================================================
+    // PHASE 4: Editor (Canvas)
+    // ========================================================================
+    log.info("register", "━━━ Phase 4: Editor ━━━");
 
-      /**
-       * EdgeView - Edge visual rendering
-       */
-      container.register(
-        "edgeView",
-        () => {
-          const edgeView = new EdgeView();
-          log.info(" ✓ Instance created: edgeView");
-          return edgeView;
-        },
-        { singleton: true }
-      );
+    // Editor - Depends on EventBus only
+    container.register(
+      "editor",
+      (c) => {
+        log.info("register", "  [1/1] Creating Editor...");
+        const eventBus = c.get("eventBus");
+        const editor = new Editor(eventBus);
+        log.info("register", "  ✓ Editor created");
+        return editor;
+      },
+      { singleton: true, description: "Main SVG canvas editor" }
+    );
 
-      // ========================================================================
-      // PHASE 5: MANAGERS
-      // ========================================================================
-      log.info("Registering Phase 5: Managers");
+    log.info("register", "✓ Phase 4 complete: Editor");
 
-      /**
-       * NodeManager - Node lifecycle management
-       */
-      container.register(
-        "nodeManager",
-        (c) => {
-          const nodeManager = new NodeManager(
-            c.get("editor"),
-            c.get("shapeRegistry"),
-            c.get("eventBus")
-          );
-          log.info(" ✓ Instance created: nodeManager");
-          return nodeManager;
-        },
-        { singleton: true }
-      );
+    // ========================================================================
+    // PHASE 5: Managers (High-level operations)
+    // ========================================================================
+    log.info("register", "━━━ Phase 5: Managers ━━━");
 
-      /**
-       * EdgeManager - Edge lifecycle management
-       */
-      container.register(
-        "edgeManager",
-        (c) => {
-          const edgeManager = new EdgeManager(
-            c.get("editor"),
-            c.get("nodeManager"),
-            c.get("eventBus")
-          );
-          log.info(" ✓ Instance created: edgeManager");
-          return edgeManager;
-        },
-        { singleton: true }
-      );
+    // NodeManager - Depends on Editor, ShapeRegistry, EventBus, StateManager
+    container.register(
+      "nodeManager",
+      (c) => {
+        log.info("register", "  [1/2] Creating NodeManager...");
+        const editor = c.get("editor");
+        const shapeRegistry = c.get("shapeRegistry");
+        const eventBus = c.get("eventBus");
+        const stateManager = c.get("stateManager");
 
-      // ========================================================================
-      // PHASE 6: CONTROLLERS
-      // ========================================================================
-      log.info("Registering Phase 6: Controllers");
+        log.info(
+          "register",
+          "    Dependencies: Editor, ShapeRegistry, EventBus, StateManager"
+        );
+        const nodeManager = new NodeManager(
+          editor,
+          shapeRegistry,
+          eventBus,
+          stateManager
+        );
+        log.info("register", "  ✓ NodeManager created (uses StateManager)");
+        return nodeManager;
+      },
+      { singleton: true, description: "Manages node lifecycle and operations" }
+    );
 
-      /**
-       * NodeController - Node interaction coordination
-       */
-      container.register(
-        "nodeController",
-        (c) => {
-          const nodeController = new NodeController(
-            c.get("nodeManager"),
-            c.get("nodeView"),
-            c.get("editor"),
-            c.get("stateManager"),
-            c.get("eventBus")
-          );
-          log.info(" ✓ Instance created: nodeController");
-          return nodeController;
-        },
-        { singleton: true }
-      );
+    // EdgeManager - Depends on Editor, NodeManager, EventBus, StateManager
+    container.register(
+      "edgeManager",
+      (c) => {
+        log.info("register", "  [2/2] Creating EdgeManager...");
+        const editor = c.get("editor");
+        const nodeManager = c.get("nodeManager");
+        const eventBus = c.get("eventBus");
+        const stateManager = c.get("stateManager");
 
-      /**
-       * EdgeController - Edge interaction coordination
-       */
-      container.register(
-        "edgeController",
-        (c) => {
-          const edgeController = new EdgeController(
-            c.get("edgeManager"),
-            c.get("edgeView"),
-            c.get("nodeManager"),
-            c.get("editor"),
-            c.get("stateManager"),
-            c.get("eventBus")
-          );
-          log.info(" ✓ Instance created: edgeController");
-          return edgeController;
-        },
-        { singleton: true }
-      );
+        log.info(
+          "register",
+          "    Dependencies: Editor, NodeManager, EventBus, StateManager"
+        );
+        const edgeManager = new EdgeManager(
+          editor,
+          nodeManager,
+          eventBus,
+          stateManager
+        );
+        log.info("register", "  ✓ EdgeManager created (uses StateManager)");
+        return edgeManager;
+      },
+      { singleton: true, description: "Manages edge lifecycle and routing" }
+    );
 
-      log.info("✅ All services registered successfully!");
-      return true;
-    } catch (error) {
-      log.error(" ❌ Failed to register services:", error);
-      throw error;
-    }
+    log.info("register", "✓ Phase 5 complete: NodeManager, EdgeManager");
+
+    // ========================================================================
+    // REGISTRATION COMPLETE
+    // ========================================================================
+    log.info("register", "");
+    log.info("register", "✅ All services registered successfully!");
+    log.info("register", "");
+    log.info("register", "Architecture:");
+    log.info("register", "  Phase 1: EventBus");
+    log.info(
+      "register",
+      "  Phase 2: EditorState → StateManager (Direct Manipulation)"
+    );
+    log.info("register", "  Phase 3: ShapeRegistry");
+    log.info("register", "  Phase 4: Editor");
+    log.info(
+      "register",
+      "  Phase 5: NodeManager, EdgeManager (use StateManager)"
+    );
+    log.info("register", "");
+    log.info(
+      "register",
+      "⚠️  CRITICAL: StateManager is the ONLY interface to state"
+    );
+    log.info(
+      "register",
+      "⚠️  Use container.get('serviceName') to retrieve services"
+    );
+    log.info("register", "");
+
+    log.exit("register");
   }
 
   /**
-   * Get a list of all registered service names
+   * Get all service names
    *
-   * @static
-   * @returns {string[]} Array of service names
+   * @returns {Array<string>}
    */
   static getServiceNames() {
     return [
-      // Core
       "eventBus",
-      // State
       "editorState",
       "stateManager",
-      // Shapes
       "shapeRegistry",
-      "shapeBuilder",
-      // Views
       "editor",
-      "nodeView",
-      "edgeView",
-      // Managers
       "nodeManager",
       "edgeManager",
-      // Controllers
-      "nodeController",
-      "edgeController",
     ];
   }
 
   /**
-   * Print the dependency graph of all services to the debug log
-   *
-   * @static
+   * Print dependency graph
    */
   static printDependencies() {
-    const log = new DebugLogger("ServiceProvider");
-
-    const dependencies = {
-      eventBus: {
-        dependencies: [],
-        phase: 1,
-      },
-      editorState: {
-        dependencies: ["eventBus"],
-        phase: 2,
-      },
-      stateManager: {
-        dependencies: ["editorState"],
-        phase: 2,
-      },
-      shapeRegistry: {
-        dependencies: [],
-        phase: 3,
-      },
-      shapeBuilder: {
-        dependencies: ["shapeRegistry"],
-        phase: 3,
-      },
-      editor: {
-        dependencies: ["eventBus", "stateManager"],
-        phase: 4,
-      },
-      nodeView: {
-        dependencies: ["shapeBuilder"],
-        phase: 4,
-      },
-      edgeView: {
-        dependencies: [],
-        phase: 4,
-      },
-      nodeManager: {
-        dependencies: ["editor", "shapeRegistry", "eventBus"],
-        phase: 5,
-      },
-      edgeManager: {
-        dependencies: ["editor", "nodeManager", "eventBus"],
-        phase: 5,
-      },
-      nodeController: {
-        dependencies: [
-          "nodeManager",
-          "nodeView",
-          "editor",
-          "stateManager",
-          "eventBus",
-        ],
-        phase: 6,
-      },
-      edgeController: {
-        dependencies: [
-          "edgeManager",
-          "edgeView",
-          "nodeManager",
-          "editor",
-          "stateManager",
-          "eventBus",
-        ],
-        phase: 6,
-      },
-    };
-
-    log.group("Service Provider - Dependency Graph");
-
-    for (let phase = 1; phase <= 6; phase++) {
-      const services = Object.entries(dependencies).filter(
-        ([_, info]) => info.phase === phase
-      );
-      if (services.length === 0) continue;
-
-      log.group(`Phase ${phase}`);
-
-      services.forEach(([name, info]) => {
-        const deps =
-          info.dependencies.length > 0 ? info.dependencies.join(", ") : "none";
-        log.info(`  • ${name} → [${deps}]`);
-      });
-      log.groupEnd();
-    }
-
-    log.groupEnd();
+    console.log("========== Service Dependencies ==========");
+    console.log("");
+    console.log("Phase 1: Core Infrastructure");
+    console.log("  eventBus (no dependencies)");
+    console.log("");
+    console.log("Phase 2: State Management");
+    console.log("  editorState → eventBus");
+    console.log("  stateManager → editorState (Direct Manipulation)");
+    console.log("");
+    console.log("Phase 3: Shape System");
+    console.log("  shapeRegistry (no dependencies)");
+    console.log("");
+    console.log("Phase 4: Editor");
+    console.log("  editor → eventBus");
+    console.log("");
+    console.log("Phase 5: Managers");
+    console.log(
+      "  nodeManager → editor, shapeRegistry, eventBus, stateManager"
+    );
+    console.log("  edgeManager → editor, nodeManager, eventBus, stateManager");
+    console.log("");
+    console.log("⚠️  CRITICAL:");
+    console.log("  - StateManager directly manipulates EditorState data");
+    console.log("  - All components use StateManager, NOT EditorState");
+    console.log("  - EditorState = Storage, StateManager = Operations");
+    console.log("  - Use container.get('serviceName') to retrieve");
+    console.log("=".repeat(42));
   }
 }

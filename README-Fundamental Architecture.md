@@ -7,7 +7,7 @@
 3. [Manager Layer (Top Layer - All Nodes Management)](#manager-layer)
 4. [Editor (Canvas Layer - SVG Container)](#editor)
 
-5. [Flow](#flow)
+5. [Correct Flow](#correct-flow)
 6. [Rendering](#rendering)
 
 7. [Integration](#integration)
@@ -114,7 +114,7 @@ Editor
 
 **Role**: Just the canvas container, delegates to NodeManager
 
-## Flow
+## Correct Flow
 
 ### Creating a Node:
 
